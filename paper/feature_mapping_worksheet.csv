@@ -1,0 +1,38 @@
+UCI_Student,UCI_Dropout,Kaggle_Student
+school,Marital Status,StudentID
+sex,Application mode,Age
+age,Application order,Gender
+address,Course,Ethnicity
+famsize,Daytime/evening attendance,ParentalEducation
+Pstatus,Previous qualification,StudyTimeWeekly
+Medu,Previous qualification (grade),Absences
+Fedu,Nacionality,Tutoring
+Mjob,Mother's qualification,ParentalSupport
+Fjob,Father's qualification,Extracurricular
+reason,Mother's occupation,Sports
+guardian,Father's occupation,Music
+traveltime,Admission grade,Volunteering
+studytime,Displaced,GPA
+failures,Educational special needs,GradeClass
+schoolsup,Debtor,
+famsup,Tuition fees up to date,
+paid,Gender,
+activities,Scholarship holder,
+nursery,Age at enrollment,
+higher,International,
+internet,Curricular units 1st sem (credited),
+romantic,Curricular units 1st sem (enrolled),
+famrel,Curricular units 1st sem (evaluations),
+freetime,Curricular units 1st sem (approved),
+goout,Curricular units 1st sem (grade),
+Dalc,Curricular units 1st sem (without evaluations),
+Walc,Curricular units 2nd sem (credited),
+health,Curricular units 2nd sem (enrolled),
+absences,Curricular units 2nd sem (evaluations),
+G1,Curricular units 2nd sem (approved),
+G2,Curricular units 2nd sem (grade),
+G3,Curricular units 2nd sem (without evaluations),
+,Unemployment rate,
+,Inflation rate,
+,GDP,
+,Target,

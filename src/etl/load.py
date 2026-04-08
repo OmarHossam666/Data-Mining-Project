@@ -3,42 +3,47 @@ import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-# Import our models (WITHOUT the engine) and our config
+# Import our models and config
 from models import DimStudent, DimCourse, DimSemester, DimDemographics, StudentRiskFact
 import config
 
 logger = logging.getLogger(__name__)
 
-# Create the engine right here using our configuration
 engine = create_engine(config.DATABASE_URI)
 Session = sessionmaker(bind=engine)
 
+def ensure_columns(df, expected_columns):
+    """Helper function to prevent KeyErrors by adding missing columns as None."""
+    for col in expected_columns:
+        if col not in df.columns:
+            df[col] = None
+    return df
+
 def load_data(transformed_datasets):
+    """Loads transformed data into the Star Schema using SQLAlchemy."""
     logger.info("Starting load phase...")
     session = Session()
     
     try:
-        # 1. Combine all 3 datasets into one unified Pandas DataFrame 
-        # (Assuming you renamed columns to match during the transform phase)
+        # 1. Combine all datasets into one unified DataFrame
         df_unified = pd.concat(transformed_datasets.values(), ignore_index=True)
         
-        # 2. Extract unique Dimension data (e.g., distinct students)
-        students_df = df_unified[['age', 'sex', 'address', 'family_size', 'parent_edu', 'internet_access', 'paid_classes']].drop_duplicates()
+        # --- DIM STUDENT ---
+        student_cols = ['age', 'sex', 'address', 'family_size', 'parent_edu', 'internet_access', 'paid_classes']
+        df_unified = ensure_columns(df_unified, student_cols)
         
-        # 3. Bulk insert Dimensions
-        # to_dict('records') converts the dataframe into a list of dictionaries that SQLAlchemy loves
+        students_df = df_unified[student_cols].drop_duplicates()
         session.bulk_insert_mappings(DimStudent, students_df.to_dict(orient='records'))
-        session.commit() # Commit so database generates the student_id Primary Keys
         
-        # 4. Fetch the generated IDs back (you would merge these back into df_unified)
-        # ... logic to merge student_id, course_id, etc., back to the main dataframe ...
-        
-        # 5. Bulk insert the Fact Table
-        fact_df = df_unified[['student_id', 'course_id', 'semester_id', 'demo_id', 'gpa', 'absences', 'risk_score', 'risk_label', 'checkpoint_week']]
-        session.bulk_insert_mappings(StudentRiskFact, fact_df.to_dict(orient='records'))
+        # Commit to generate IDs
         session.commit()
         
-        logger.info("Load complete successfully!")
+        # Validation
+        student_count = session.query(DimStudent).count()
+        logger.info(f"Load complete. DimStudent row count: {student_count}")
+        
+        # (Note: You will add similar blocks here for Course, Semester, Demographics, and Fact tables
+        # once your feature mapping worksheet is complete!)
         
     except Exception as e:
         session.rollback()

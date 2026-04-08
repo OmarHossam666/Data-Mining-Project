@@ -1,0 +1,23 @@
+# Datasets
+/data/*
+!/data/.keep
+
+# Python caches and environments
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+.conda/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# VSCode settings
+.vscode/
+
+# SQLite Database
+*.db
+*.sqlite3

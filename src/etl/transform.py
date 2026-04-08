@@ -5,50 +5,50 @@ from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 
 logger = logging.getLogger(__name__)
 
-def engineer_risk_label(g3_grade):
-    """Maps G3 grades to risk labels aligned with probation thresholds."""
-    if pd.isna(g3_grade):
-        return np.nan
-    elif g3_grade < 10:
-        return 1 # High Risk
-    elif g3_grade <= 12:
-        return 0 # Medium Risk (Grouping with Low for binary, or keep as multi-class)
-    else:
-        return 0 # Low Risk
-
 def transform_data(raw_datasets):
     """Cleans, imputes, and engineers features for the warehouse."""
-    logger.info("Starting transformation phase...")
+    logger.info("Starting transformation phase with full target mapping...")
     transformed_data = {}
-    
     scaler = MinMaxScaler()
-    le = LabelEncoder()
     
     for name, df in raw_datasets.items():
         logger.info(f"Transforming dataset: {name}...")
         df_clean = df.copy()
         
-        # 1. Missing Value Strategy
-        # Median for numerical, Mode for categorical
+        # 1. Missing Value Strategy (Median/Mode)
         num_cols = df_clean.select_dtypes(include=[np.number]).columns
         cat_cols = df_clean.select_dtypes(exclude=[np.number]).columns
         
         for col in num_cols:
             if df_clean[col].isnull().sum() > 0:
-                df_clean[col].fillna(df_clean[col].median(), inplace=True)
+                df_clean[col] = df_clean[col].fillna(df_clean[col].median())
                 
         for col in cat_cols:
             if df_clean[col].isnull().sum() > 0:
-                df_clean[col].fillna(df_clean[col].mode()[0], inplace=True)
+                df_clean[col] = df_clean[col].fillna(df_clean[col].mode()[0])
                 
-        # 2. Risk Label Engineering (Example using UCI Student G3 column)
-        # Note: You will adjust 'G3' to match your harmonized column names
-        if 'G3' in df_clean.columns:
-            df_clean['risk_label'] = df_clean['G3'].apply(engineer_risk_label)
-            logger.info(f"Engineered risk labels for {name}.")
+        # 2. TRUE Target Engineering for ALL Datasets
+        if name == 'uci_student':
+            # High Risk if G3 grade is less than 10
+            if 'G3' in df_clean.columns:
+                df_clean['risk_label'] = df_clean['G3'].apply(lambda x: 1 if x < 10 else 0)
+                
+        elif name == 'uci_dropout':
+            # High Risk if they actually Dropped Out
+            if 'Target' in df_clean.columns:
+                df_clean['risk_label'] = df_clean['Target'].apply(lambda x: 1 if x == 'Dropout' else 0)
+                
+        elif name == 'kaggle':
+            # High Risk if GradeClass is 3 (D) or 4 (F)
+            if 'GradeClass' in df_clean.columns:
+                df_clean['risk_label'] = df_clean['GradeClass'].apply(lambda x: 1 if x >= 3 else 0)
 
-        # 3. Feature Normalization
-        # Example: Scaling a GPA/Grade column
+        if 'risk_label' in df_clean.columns:
+            logger.info(f"Successfully engineered real risk labels for {name}.")
+        else:
+            logger.warning(f"Could not find target column to engineer risk label for {name}!")
+
+        # 3. Feature Normalization (Example scaling)
         grade_columns = [col for col in df_clean.columns if 'G3' in col or 'GPA' in col]
         if grade_columns:
             df_clean[grade_columns] = scaler.fit_transform(df_clean[grade_columns])

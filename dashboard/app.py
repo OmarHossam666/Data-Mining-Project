@@ -26,15 +26,27 @@ def load_data():
     test_df = pd.read_csv(ROOT_DIR / "features" / "checkpoint_12_test.csv")
     X = test_df.drop(columns=['target'])
     y = test_df['target']
-    
+
     # Load the checkpoint comparison for the timeline chart
     results_df = pd.read_csv(ROOT_DIR / "results" / "checkpoint_comparison.csv")
-    
+
     return X, y, results_df
 
 @st.cache_resource
 def load_model():
     return joblib.load(ROOT_DIR / "models" / "xgb_model.joblib")
+
+@st.cache_data
+def compute_shap_values(_model, _X):
+    """Compute SHAP values once and cache them for dashboard performance."""
+    sample = _X.sample(min(100, len(_X)), random_state=42)
+    explainer = shap.Explainer(_model, sample)
+    shap_vals = explainer(_X)
+    shap_df = pd.DataFrame({
+        'Feature': _X.columns,
+        'Importance (Mean |SHAP|)': np.abs(shap_vals.values).mean(0)
+    }).sort_values(by='Importance (Mean |SHAP|)', ascending=False).head(10)
+    return shap_df
 
 X, y, results_df = load_data()
 model = load_model()
@@ -52,8 +64,8 @@ X_display = X.copy()
 X_display['Risk Probability'] = probs
 X_display['Intervention Tier'] = [map_tier(p) for p in probs]
 X_display['True Label'] = y.values
-# Generate dummy Student IDs for the dashboard display
-X_display['Student ID'] = [f"STU-{1000 + i}" for i in range(len(X_display))]
+# Synthetic Student IDs for dashboard display (not real identifiers)
+X_display['Student ID'] = [f"SYN-{1000 + i}" for i in range(len(X_display))]
 
 # --- Sidebar Filters ---
 st.sidebar.header("Dashboard Filters")
@@ -81,8 +93,8 @@ with row1_col1:
     # Custom colors mapping your tiers
     color_map = {"Low Risk": "#2ca02c", "Medium Risk": "#ff7f0e", "High Risk": "#d62728"}
     fig_pie = px.pie(
-        filtered_df, 
-        names='Intervention Tier', 
+        filtered_df,
+        names='Intervention Tier',
         hole=0.4,
         color='Intervention Tier',
         color_discrete_map=color_map
@@ -96,9 +108,9 @@ with row1_col2:
         # Filter just to XGBoost to keep the chart clean
         xgb_results = results_df[results_df['Model'] == 'XGBoost']
         fig_line = px.line(
-            xgb_results, 
-            x='Checkpoint', 
-            y='Val_F1_Macro', 
+            xgb_results,
+            x='Checkpoint',
+            y='Val_F1_Macro',
             markers=True,
             title="XGBoost Predictive Power Over Time",
             labels={'Val_F1_Macro': 'F1-Macro Score'}
@@ -110,29 +122,20 @@ with row1_col2:
 
 st.divider()
 
-# --- Row 2: Global Feature Importance (SHAP) ---
+# --- Row 2: Global Feature Importance (SHAP) — cached ---
 st.subheader("Global Risk Drivers (Top 10 Features)")
-with st.spinner("Calculating SHAP values..."):
-    # Calculate SHAP on a fast sample to keep the dashboard snappy
-    explainer = shap.Explainer(model, X.sample(min(100, len(X)), random_state=42))
-    shap_values = explainer(X)
-    
-    # Calculate mean absolute SHAP for plotting
-    shap_df = pd.DataFrame({
-        'Feature': X.columns,
-        'Importance (Mean |SHAP|)': np.abs(shap_values.values).mean(0)
-    }).sort_values(by='Importance (Mean |SHAP|)', ascending=False).head(10)
-    
-    fig_shap = px.bar(
-        shap_df, 
-        x='Importance (Mean |SHAP|)', 
-        y='Feature', 
-        orientation='h',
-        color='Importance (Mean |SHAP|)',
-        color_continuous_scale='Reds'
-    )
-    fig_shap.update_layout(yaxis={'categoryorder':'total ascending'})
-    st.plotly_chart(fig_shap, use_container_width=True)
+shap_df = compute_shap_values(model, X)
+
+fig_shap = px.bar(
+    shap_df,
+    x='Importance (Mean |SHAP|)',
+    y='Feature',
+    orientation='h',
+    color='Importance (Mean |SHAP|)',
+    color_continuous_scale='Reds'
+)
+fig_shap.update_layout(yaxis={'categoryorder':'total ascending'})
+st.plotly_chart(fig_shap, use_container_width=True)
 
 st.divider()
 

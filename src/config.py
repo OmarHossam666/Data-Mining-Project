@@ -18,7 +18,7 @@ MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 # --- Database Configuration ---
 # SQLite for local dev (can be changed to PostgreSQL string later)
-DB_PATH = PROJECT_ROOT / "datamining.db"
+DB_PATH = PROJECT_ROOT / "warehouse.db"
 DATABASE_URI = f"sqlite:///{DB_PATH}"
 
 # --- Logging Configuration ---

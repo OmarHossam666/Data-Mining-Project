@@ -1,0 +1,13 @@
+Checkpoint,Model,Val_F1_Macro
+Week 4,LogisticRegression,0.411764705882353
+Week 4,DecisionTree,0.46875
+Week 4,RandomForest,0.46875
+Week 4,XGBoost,0.4603174603174603
+Week 8,LogisticRegression,0.4444444444444444
+Week 8,DecisionTree,0.6727272727272727
+Week 8,RandomForest,0.6296296296296297
+Week 8,XGBoost,0.45454545454545453
+Week 12,LogisticRegression,0.6158730158730159
+Week 12,DecisionTree,0.42105263157894735
+Week 12,RandomForest,0.4406779661016949
+Week 12,XGBoost,0.5285714285714286

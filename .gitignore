@@ -21,3 +21,10 @@ venv/
 # SQLite Database
 *.db
 *.sqlite3
+
+# Log files
+*.log
+
+# OS files
+Thumbs.db
+.DS_Store

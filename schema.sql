@@ -1,4 +1,3 @@
-
 CREATE TABLE dim_course (
 	course_id INTEGER NOT NULL, 
 	subject VARCHAR(50), 
@@ -7,10 +6,7 @@ CREATE TABLE dim_course (
 	failures_history INTEGER, 
 	extracurricular BOOLEAN, 
 	PRIMARY KEY (course_id)
-)
-
-;
-
+);
 
 CREATE TABLE dim_demographics (
 	demo_id INTEGER NOT NULL, 
@@ -19,10 +15,7 @@ CREATE TABLE dim_demographics (
 	first_gen_student BOOLEAN, 
 	scholarship_flag BOOLEAN, 
 	PRIMARY KEY (demo_id)
-)
-
-;
-
+);
 
 CREATE TABLE dim_semester (
 	semester_id INTEGER NOT NULL, 
@@ -30,10 +23,7 @@ CREATE TABLE dim_semester (
 	period VARCHAR(2), 
 	checkpoint_week VARCHAR(20), 
 	PRIMARY KEY (semester_id)
-)
-
-;
-
+);
 
 CREATE TABLE dim_student (
 	student_id INTEGER NOT NULL, 
@@ -45,10 +35,7 @@ CREATE TABLE dim_student (
 	internet_access BOOLEAN, 
 	paid_classes BOOLEAN, 
 	PRIMARY KEY (student_id)
-)
-
-;
-
+);
 
 CREATE TABLE fact_student_risk (
 	fact_id INTEGER NOT NULL, 
@@ -60,13 +47,10 @@ CREATE TABLE fact_student_risk (
 	absences INTEGER, 
 	risk_score FLOAT, 
 	risk_label INTEGER, 
-	checkpoint_week INTEGER, 
 	PRIMARY KEY (fact_id), 
 	FOREIGN KEY(student_id) REFERENCES dim_student (student_id), 
 	FOREIGN KEY(course_id) REFERENCES dim_course (course_id), 
 	FOREIGN KEY(semester_id) REFERENCES dim_semester (semester_id), 
 	FOREIGN KEY(demo_id) REFERENCES dim_demographics (demo_id)
-)
-
-;
+);
 

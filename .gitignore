@@ -21,3 +21,4 @@ venv/
 # SQLite Database
 *.db
 *.sqlite3
+paper/main.log

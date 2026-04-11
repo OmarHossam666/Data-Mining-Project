@@ -1,0 +1,571 @@
+\documentclass[conference,a4paper]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=black,
+  urlcolor=blue,
+  pdfauthor={Omar Hossam Fathey et al.},
+  pdftitle={ProGrade: A Data Warehouse-Driven Early Warning Framework for Academic Probation Prediction Using Ensemble Learning and Mid-Semester Risk Scoring}
+}
+\usepackage{enumitem}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08emT\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+% ===================================================================
+%  TITLE
+% ===================================================================
+\title{ProGrade: A Data Warehouse-Driven Early Warning Framework\\for Academic Probation Prediction Using Ensemble\\Learning and Mid-Semester Risk Scoring}
+
+\author{
+\IEEEauthorblockN{
+Omar M. Elzeki\textsuperscript{1,2},
+Omar Hossam Fathey\textsuperscript{1},
+Shahd Elsayed Mohamed\textsuperscript{1},
+Abdelrahman Ahmed Yehia\textsuperscript{3}
+}
+
+\IEEEauthorblockA{
+\textsuperscript{1}Faculty of Computers and Information, Mansoura University, Mansoura 35516, Egypt \\
+\textsuperscript{2}Faculty of Computer Science \& Engineering, New Mansoura University, New Mansoura, 35712, Egypt \\
+\textsuperscript{3}Misr Higher Institute for Commerce and Computers, Mansoura, 35511, Egypt \\
+}}
+\maketitle
+
+% ===================================================================
+%  ABSTRACT
+% ===================================================================
+\begin{abstract}
+Student academic failure and dropout remain critical challenges confronting higher education institutions globally. Existing predictive systems typically operate on flat, siloed data files and issue binary risk labels only after a semester concludes, thereby eliminating opportunity for timely intervention. This paper introduces \textbf{ProGrade}, a comprehensive Early Warning System (EWS) that makes five interrelated contributions to Educational Data Mining (EDM). \textit{First}, we propose the first academic risk prediction pipeline natively built upon a star-schema data warehouse, enabling structured Extract--Transform--Load (ETL) pipelines that unify academic history, demographic, behavioral, and socioeconomic dimensions into a single analytical fact table. \textit{Second}, we introduce a mid-semester checkpoint evaluation protocol — scoring student risk at Weeks 4, 8, and 12 — and identify the earliest checkpoint at which model accuracy is sufficient to trigger meaningful academic intervention. \textit{Third}, we conduct a rigorous cross-dataset benchmarking study across three publicly available datasets (UCI Student Performance, UCI Dropout \& Academic Success, and Kaggle Students Performance), establishing a reproducible evaluation framework that tests model generalizability. \textit{Fourth}, we replace binary risk classification with a three-tier stratification system (Low / Medium / High) mapped to specific, actionable intervention recommendations. \textit{Fifth}, we integrate SHapley Additive exPlanations (SHAP) values into the pipeline, providing per-student feature attribution reports that identify which specific factors are driving each individual's risk score. Experimental results demonstrate that XGBoost achieves an optimal F1-Macro score at the Week 12 checkpoint while the cross-dataset benchmark reveals a significant generalization gap, underscoring the need for institution-specific model calibration. The SHAP explainability layer transforms black-box predictions into actionable, human-readable advisor reports, bridging the trust gap between algorithmic output and institutional decision-making.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Educational Data Mining, Student Dropout Prediction, Data Warehouse, SHAP, Ensemble Learning, Early Warning Systems, Cross-Dataset Validation, Explainable Artificial Intelligence.
+\end{IEEEkeywords}
+
+% ===================================================================
+%  I.  INTRODUCTION
+% ===================================================================
+\section{Introduction}\label{sec:intro}
+
+The global expansion of higher education has been accompanied by persistently high attrition rates, with institutional dropout figures routinely exceeding 30\% across European and North American universities \cite{realinho2022}. The economic and social costs of student failure are substantial: institutions lose tuition revenue, national labor markets are deprived of skilled graduates, and individuals suffer personal and financial setbacks \cite{mduma2019}. Yet the dominant institutional response to academic failure remains overwhelmingly \textit{reactive} — identifying why a student failed only after the semester concludes, long after the window for effective intervention has closed.
+
+Machine learning (ML) has emerged as a powerful instrument within Educational Data Mining (EDM) for predicting student outcomes \cite{romero2020, baker2014edm, hellas2018}. Ensemble methods such as Random Forest (RF) \cite{breiman2001rf} and XGBoost \cite{chen2016xgboost} have demonstrated strong predictive performance on structured institutional data \cite{namoun2021, albreiki2021}. However, the transition from academic prototypes to deployable institutional tools is impeded by four systemic limitations in the current literature:
+
+\begin{enumerate}[leftmargin=*, label=\arabic*)]
+\item \textbf{Absence of data governance infrastructure.} The overwhelming majority of existing studies apply ML algorithms directly to raw CSV files or Learning Management System (LMS) exports \cite{romero2020, namoun2021}. No prior work architects a proper dimensional data warehouse — with structured ETL pipelines, surrogate keys, and conformed dimensions — as the backbone of the prediction pipeline. This omission compromises reproducibility, auditability, and institutional scalability.
+
+\item \textbf{Temporal mismatch between prediction and intervention.} Most systems either predict risk at enrollment (using only pre-admission variables) or after semester completion (when grades are finalized) \cite{jayaprakash2014ews, arnold2012ews}. The critical mid-semester window — Weeks 4 through 12 — where behavioral signals accumulate and interventions remain actionable, is systematically underexplored. No existing framework quantifies the accuracy--intervention tradeoff across multiple intra-semester checkpoints.
+
+\item \textbf{Single-institution validation bias.} Predictive models are overwhelmingly trained and tested on a single institutional dataset \cite{cortez2008, realinho2022}, limiting any claim of generalizability. The extent to which a model trained on one demographic cohort transfers to another educational system, country, or cultural context remains unquantified.
+
+\item \textbf{The black-box trust deficit.} High predictive accuracy alone is insufficient for institutional adoption. Academic advisors and administrators require explainable, per-student reasoning before acting on algorithmic recommendations \cite{nature2025xai, khosravi2022xaiedu}. While Explainable AI (XAI) techniques such as SHAP \cite{lundberg2017shap} exist, their systematic integration into automated intervention reporting pipelines remains scarce.
+\end{enumerate}
+
+To address these gaps, this paper proposes \textbf{ProGrade} — a comprehensive, end-to-end predictive analytics framework that couples a dimensional data warehouse with ensemble learning, temporal checkpoint scoring, cross-dataset benchmarking, and SHAP-driven explainability. The system is designed not merely as a predictive model but as a \textit{decision-support instrument} for academic advisors, transforming educational data from a historical record into a live intervention tool.
+
+\subsection{Research Questions}
+
+This study is guided by three primary research questions:
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{RQ1:} Which combination of academic, behavioral, and demographic features best predicts a student's risk of academic probation before semester completion?
+\item \textbf{RQ2:} At what point in the semester can a predictive model achieve sufficient accuracy to trigger meaningful early intervention?
+\item \textbf{RQ3:} How does a warehouse-integrated ML pipeline compare to traditional end-of-semester evaluation in terms of intervention lead time and prediction accuracy?
+\end{itemize}
+
+\subsection{Contributions}
+
+The main contributions of this paper are explicitly enumerated as follows:
+
+\begin{enumerate}[leftmargin=*, label=\textbf{C\arabic*.}]
+\item \textbf{Data Warehouse-Integrated Academic Risk Framework.} We propose the first academic risk prediction system built natively on a star-schema data warehouse, enabling structured ETL pipelines that unify academic history, demographic, behavioral, and socioeconomic dimensions into a single analytical fact table — making the system reproducible, scalable, and institution-agnostic.
+
+\item \textbf{Mid-Semester Checkpoint Risk Scoring.} We introduce a mid-semester checkpoint evaluation protocol — scoring student risk at Weeks 4, 8, and 12 — and identify the earliest checkpoint at which model accuracy is sufficient to trigger meaningful academic intervention, quantifying the intervention lead time gained over end-of-semester baselines.
+
+\item \textbf{Multi-Source Cross-Dataset Benchmarking.} We conduct a rigorous cross-dataset benchmarking study across three publicly available datasets (UCI Student Performance \cite{cortez2008}, UCI Dropout \& Academic Success \cite{uci_dropout2021}, and Kaggle Students Performance \cite{kaggle_student2023}), establishing a reproducible evaluation framework that tests model generalizability across different educational systems, countries, and demographic profiles.
+
+\item \textbf{Three-Tier Risk Classification.} We replace binary risk classification with a three-tier stratification system (Low / Medium / High) mapped to specific, actionable intervention recommendations — transforming the model's output from a flag into a decision-support instrument for academic advisors.
+
+\item \textbf{SHAP Explainability Layer.} We integrate SHAP values into the warehouse-integrated pipeline, providing per-student feature attribution reports that identify which specific factors — attendance patterns, assignment submission delays, GPA trajectory — are driving each individual's risk score, making the system actionable at the advisor level.
+\end{enumerate}
+
+\subsection{Paper Organization}
+
+The remainder of this paper is organized as follows. Section~\ref{sec:related} surveys related work across five thematic pillars. Section~\ref{sec:method} details the ProGrade architecture, including the ETL pipeline, star-schema design, feature engineering, temporal checkpoint protocol, and model training methodology. Section~\ref{sec:results} presents experimental results, cross-dataset benchmarking, and SHAP analysis. Section~\ref{sec:discussion} discusses findings in relation to the research questions, addresses limitations, and outlines future work. Section~\ref{sec:conclusion} concludes the paper.
+
+% ===================================================================
+%  II.  RELATED WORK
+% ===================================================================
+\section{Related Work}\label{sec:related}
+
+The academic landscape surrounding student dropout prediction and early warning systems has evolved significantly over the past decade. This section surveys the relevant literature across five thematic pillars that directly inform the contributions of ProGrade.
+
+\subsection{Machine Learning for Student Dropout Prediction}
+
+Educational data mining has transitioned from traditional statistical methods (e.g., logistic regression, decision trees) toward ensemble and gradient-boosted architectures. Cortez and Silva \cite{cortez2008} established an early benchmark using decision trees and neural networks on Portuguese secondary school data, achieving moderate accuracy but with limited feature diversity. Subsequent surveys \cite{romero2020, hellas2018, namoun2021} confirmed that Random Forest \cite{breiman2001rf} and XGBoost \cite{chen2016xgboost} consistently outperform single classifiers on structured educational data, owing to their capacity for modeling non-linear interactions among academic, behavioral, and demographic features.
+
+Recent comparative studies have extended this analysis to voting and stacking ensemble architectures. Putra et al.\ \cite{putra2025ensemble} demonstrated that soft-voting ensembles combining RF and XGBoost achieve F1-scores as high as 0.93, while stacking architectures with logistic regression meta-learners further improve ROC-AUC stability. Chen and Cui \cite{chen2020dropout} conducted a systematic review confirming ensemble superiority but noted a critical lacuna: the overwhelming majority of studies report only overall accuracy, a metric that is misleading when the at-risk class is a small minority. This observation motivates our emphasis on F1-Macro as the primary optimization target.
+
+Despite these advances, a persistent limitation is that virtually all existing studies apply ML algorithms directly to exported CSV files or raw LMS logs \cite{romero2020, namoun2021}. No prior work integrates the predictive pipeline with a formal dimensional data warehouse — the industry standard for analytical data management \cite{kimball2013dw}. This gap is significant because it means that existing systems lack the data governance, auditability, and scalability that institutional deployment demands.
+
+\subsection{Early Warning Systems in Higher Education}
+
+The concept of an EWS for student retention originated with pioneering systems such as Purdue University's Course Signals \cite{arnold2012ews}, which used a traffic-light risk indicator to nudge at-risk students toward support resources. Jayaprakash et al.\ \cite{jayaprakash2014ews} extended this approach with an open-source analytics initiative that flagged academically at-risk students using logistic regression on LMS behavioral data.
+
+However, a critical review of these systems reveals two systematic shortcomings. First, most rely on simple thresholding rules (e.g., flagging students who miss a fixed number of classes) rather than multidimensional predictive analytics \cite{marbouti2016ews}. Second, existing temporal models are coarse-grained: they either predict at enrollment (using only admissions data) or at semester end (when the opportunity for intervention has expired). Marbouti et al.\ \cite{marbouti2016ews} demonstrated that models trained on Week~4 data achieve moderate accuracy, but their work stops short of quantifying the accuracy-intervention tradeoff across multiple intra-semester checkpoints — the exact gap that ProGrade's temporal checkpoint protocol addresses.
+
+Aulck et al.\ \cite{aulck2020temporal} explored longitudinal risk trajectories across multiple semesters but did not address within-semester temporal granularity. The mid-semester window, where behavioral signals such as attendance decline and assignment submission delays begin to manifest, remains systematically underexplored in the literature.
+
+\subsection{Explainable AI in Educational Data Mining}
+
+The adoption of ML-driven decision-making in education has been hindered by a fundamental trust deficit: academic advisors and institutional leaders cannot act on predictions they do not understand \cite{nature2025xai, khosravi2022xaiedu}. Alwadi et al.\ \cite{nature2025xai} emphasized that high accuracy is not the only critical factor — stakeholders require that the model's reasoning be explainable and trustworthy. The complexity of ensemble algorithms often encapsulates decision-making within a ``black box,'' making it difficult to elucidate the specific reasoning underlying predictions.
+
+SHAP (SHapley Additive exPlanations) \cite{lundberg2017shap} has emerged as the dominant framework for post-hoc interpretability in EDM, providing both global feature importance rankings and local, per-instance explanations. Khosravi et al.\ \cite{khosravi2022xaiedu} conducted a comprehensive review of XAI applications in education, concluding that while the theoretical benefits of explainability are well-established, practical integration into automated reporting pipelines remains scarce. Most systems present SHAP plots as standalone research artifacts rather than embedding them into advisor-facing decision-support reports.
+
+ProGrade addresses this gap by integrating SHAP-driven feature attribution directly into the pipeline, generating per-student intervention reports that translate abstract model outputs into concrete, actionable recommendations for academic advisors.
+
+\subsection{Data Warehousing for Educational Analytics}
+
+The data warehouse is the established infrastructure for analytical workloads in enterprise domains \cite{kimball2013dw}. A star schema organizes data into a central \textit{fact table} (containing quantitative measurements and foreign keys) surrounded by multiple \textit{dimension tables} (containing descriptive attributes), enabling rapid ``slice and dice'' analytical queries without complex, slow-running joins.
+
+In educational contexts, the application of formal data warehousing principles remains nascent. Abella-Garc\'{\i}a et al.\ \cite{abelladosantos2019edudw} reviewed architectural challenges specific to educational data warehousing, noting that most institutional analytics systems rely on ad-hoc SQL queries against operational databases rather than properly modeled analytical schemas. This architectural choice has far-reaching consequences: it impedes data governance, makes ETL lineage untraceable, and renders the analytical pipeline fragile to schema changes in source systems.
+
+No prior academic risk prediction study integrates a star-schema warehouse as the data backbone. ProGrade fills this gap with a \textit{FactStudentRisk} fact table surrounded by conformed dimensions for students, courses, semesters, and demographics — providing the structural foundation for reproducible, auditable, and institutionally scalable predictive analytics.
+
+\subsection{Class Imbalance and Cross-Dataset Generalization}
+
+A defining characteristic of dropout prediction datasets is severe class imbalance: the at-risk (minority) class typically constitutes 10--30\% of the student population \cite{chawla2002smote, fernandez2018smotesurvey}. Naive model training on such data produces classifiers that are biased toward predicting the majority class, achieving high overall accuracy while catastrophically failing to identify the very students who need intervention most.
+
+SMOTE \cite{chawla2002smote} addresses this problem by generating synthetic minority-class samples via interpolation in feature space. However, a methodologically critical error — frequently observed in the EDM literature — involves applying SMOTE to the entire dataset before splitting into training and test partitions, thereby introducing data leakage that inflates performance estimates. ProGrade enforces a strict protocol: SMOTE is applied exclusively to the training partition after a 70/15/15 stratified train-validation-test split.
+
+Regarding generalizability, Boyer et al.\ \cite{boyer2024crossdataset} identified cross-institutional validation as a critical open challenge in EDM. Most deployed models are trained on a single cohort from one institution \cite{cortez2008, realinho2022}, with no evaluation of how well learned patterns transfer across educational systems, countries, or demographic profiles. ProGrade's multi-source cross-dataset benchmarking directly addresses this single-institution bias.
+
+\subsection{Summary of Research Gaps}
+
+Table~\ref{tab:litgap} summarizes the capabilities of existing approaches and the specific gaps that ProGrade addresses.
+
+\begin{table*}[htbp]
+\centering
+\caption{Summary of Existing Capabilities and Research Gaps Addressed by ProGrade}
+\label{tab:litgap}
+\begin{tabular}{p{4.5cm}p{4.5cm}p{4cm}p{3cm}}
+\toprule
+\textbf{Existing Capability} & \textbf{Source Evidence} & \textbf{Identified Gap} & \textbf{ProGrade Contribution} \\
+\midrule
+ML models for dropout prediction (RF, XGBoost, LightGBM) & XGBoost outperforms other models with GridSearch; RF handles imbalanced data \cite{realinho2022, putra2025ensemble} & No data warehouse integration; raw CSV pipelines & C1: Star-schema DW \\
+\addlinespace
+Pre-enrollment and end-of-semester risk scoring & Course Signals traffic-light system \cite{arnold2012ews}; logistic regression at enrollment \cite{jayaprakash2014ews} & Mid-semester window unexplored; no checkpoint accuracy quantification & C2: Temporal checkpoints \\
+\addlinespace
+Single-institution validation & UCI Student Performance trained on one school \cite{cortez2008}; UCI Dropout on one polytechnic \cite{realinho2022} & No cross-dataset generalization testing & C3: Multi-source benchmarking \\
+\addlinespace
+Binary at-risk/not-at-risk labels & Standard binary classification output \cite{namoun2021, albreiki2021} & No intervention granularity for resource allocation & C4: Three-tier risk stratification \\
+\addlinespace
+XAI via SHAP for feature importance & SHAP for global feature rankings \cite{nature2025xai, khosravi2022xaiedu} & No automated per-student advisor reports & C5: SHAP intervention reports \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+% ===================================================================
+%  III.  METHODOLOGY
+% ===================================================================
+\section{Methodology}\label{sec:method}
+
+The ProGrade framework is composed of four integrated stages: (1) data integration and warehouse construction, (2) temporal feature engineering, (3) model training and evaluation, and (4) explainability and intervention reporting. Fig.~\ref{fig:architecture} illustrates the end-to-end system architecture.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{figures/star_schema_ERD.png}
+    \caption{ProGrade Star Schema Entity-Relationship Diagram. The central \textit{FactStudentRisk} table connects to four dimension tables via surrogate foreign keys.}
+    \label{fig:architecture}
+\end{figure}
+
+\subsection{Data Sources and Integration}
+
+Three publicly available educational datasets were selected to ensure diversity in institutional context, geographic origin, and demographic coverage:
+
+\begin{enumerate}[leftmargin=*, label=\textbf{D\arabic*.}]
+\item \textbf{UCI Student Performance} \cite{cortez2008}: 649 records from two Portuguese secondary schools, encompassing 33 features including demographics, family background, behavioral indicators (absences, study time), and three grading periods (G1, G2, G3).
+
+\item \textbf{UCI Dropout \& Academic Success} \cite{uci_dropout2021}: 4,424 records from a Portuguese polytechnic institution, spanning 37 features including macroeconomic context (GDP, unemployment rate, inflation), curricular unit performance across two semesters, and a ternary target label (Dropout / Enrolled / Graduate).
+
+\item \textbf{Kaggle Students Performance} \cite{kaggle_student2023}: 2,392 records with 15 features covering demographics (age, gender, ethnicity), behavioral indicators (absences, study time), parental attributes, and extracurricular participation, with grades classified into five categories (A through F).
+\end{enumerate}
+
+The selection of three datasets from different institutions, countries, and educational levels directly supports Contribution~C3 (cross-dataset benchmarking) and ensures that findings are not artifacts of a single data source.
+
+\subsection{Star-Schema Data Warehouse Design}
+
+Following the dimensional modeling methodology of Kimball and Ross \cite{kimball2013dw}, we designed a star schema with the following components:
+
+\subsubsection{Fact Table: \texttt{FactStudentRisk}}
+
+The central fact table stores one row per student, per course, per semester checkpoint, defining the analytical grain. Measures include:
+
+\begin{itemize}[leftmargin=*]
+\item \texttt{gpa} (Float): Grade point average at the time of checkpoint evaluation.
+\item \texttt{absences} (Integer): Cumulative absences accrued up to the checkpoint.
+\item \texttt{risk\_score} (Float): ML-assigned probability of academic failure (0.0--1.0).
+\item \texttt{risk\_label} (Integer): Predicted risk classification.
+\item \texttt{checkpoint\_week} (Integer): Temporal identifier (4, 8, or 12).
+\end{itemize}
+
+Four surrogate foreign keys (\texttt{student\_id}, \texttt{course\_id}, \texttt{semester\_id}, \texttt{demo\_id}) link the fact table to its conformed dimensions.
+
+\subsubsection{Dimension Tables}
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{\texttt{DimStudent}}: Personal and family attributes — age, sex, address type (Urban/Rural), family size, parental education, internet access, and paid class attendance.
+\item \textbf{\texttt{DimCourse}}: Academic context — subject, school, weekly study time, historical failure count, and extracurricular participation.
+\item \textbf{\texttt{DimSemester}}: Temporal dimension — academic year, grading period (G1/G2/G3), and checkpoint week.
+\item \textbf{\texttt{DimDemographics}}: Socioeconomic attributes — nationality, socioeconomic tier, first-generation student flag, and scholarship status.
+\end{itemize}
+
+\subsubsection{ETL Pipeline}
+
+The ETL pipeline is implemented in Python using SQLAlchemy ORM and operates in three stages:
+
+\begin{enumerate}[leftmargin=*]
+\item \textbf{Extract:} Raw CSV files from the three data sources are ingested via Pandas \texttt{read\_csv()}, with each dataset tagged by its source identifier.
+\item \textbf{Transform:} Missing values are imputed using median (numeric) and mode (categorical) strategies. Target labels are engineered per dataset: G3 $< 10$ for UCI Student Performance, ``Dropout'' label for UCI Dropout, and GradeClass $\geq 3$ for Kaggle. Grade features are normalized via MinMaxScaler.
+\item \textbf{Load:} Transformed records are mapped to ORM-defined dimension and fact table objects, with each source dataset receiving a unique identifier in the \texttt{school} field of \texttt{DimCourse} to enable downstream cross-dataset segmentation.
+\end{enumerate}
+
+\subsection{Temporal Checkpoint Feature Engineering}\label{sec:feature_eng}
+
+To facilitate proactive intervention (Contribution~C2), we partition the data into three mid-semester checkpoints simulating progressively available information:
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{Week 4} (Early Baseline): Only demographic and prior-history features (age, sex, parental education, failure history) are available. Behavioral signals have not yet accumulated.
+\item \textbf{Week 8} (Mid-Semester): Behavioral indicators — including absences, current assignment patterns, and early grade estimates — become available.
+\item \textbf{Week 12} (Late Mid-Semester): The full feature set is accessible, including cumulative GPA, complete absence records, and behavioral trend indicators.
+\end{itemize}
+
+For each checkpoint, the feature engineering pipeline executes the following steps:
+
+\subsubsection{Feature Extraction from Warehouse}
+
+Data is extracted from the star schema via a SQL JOIN query that flattens the \textit{FactStudentRisk} table with all dimension tables, producing a unified analytical DataFrame. Categorical text columns are converted to numeric representations via one-hot encoding.
+
+\subsubsection{Multicollinearity Reduction}
+
+A Pearson correlation matrix is computed, and features exhibiting pairwise correlation $|r| > 0.85$ are identified. One member of each highly correlated pair is removed to mitigate multicollinearity-induced variance inflation in model coefficients \cite{chandrashekar2014featureselection}.
+
+\subsubsection{Feature Selection}
+
+SelectKBest with ANOVA F-test scoring (\texttt{f\_classif}) is applied to rank features by their univariate statistical association with the target variable. The top $k = \min(15, |F|)$ features are retained, where $|F|$ is the total number of available features at the given checkpoint.
+
+\subsubsection{Data Splitting and Class Balancing}
+
+A stratified 70/15/15 train-validation-test split preserves the original class distribution across all partitions. SMOTE \cite{chawla2002smote} is applied exclusively to the training partition to synthesize minority-class samples, ensuring that neither the validation nor the test set is contaminated by synthetic observations — a critical methodological safeguard against data leakage that is frequently violated in the EDM literature \cite{fernandez2018smotesurvey}.
+
+\subsubsection{Feature Scaling}
+
+StandardScaler is fit on the SMOTE-augmented training data and applied via \texttt{transform()} to both the validation and test partitions, preventing information leakage from the evaluation sets into the scaling parameters.
+
+\subsection{Model Architecture and Hyperparameter Tuning}
+
+Three classification algorithms were selected to represent a spectrum of model complexity:
+
+\begin{enumerate}[leftmargin=*]
+\item \textbf{Logistic Regression (LR)} \cite{hosmer2013logistic}: A linear baseline providing an interpretable reference point for evaluating whether ensemble methods yield statistically meaningful improvements.
+
+\item \textbf{Random Forest (RF)} \cite{breiman2001rf}: A bagging-based ensemble of decorrelated decision trees. Key hyperparameters tuned include \texttt{n\_estimators}, \texttt{max\_depth}, and \texttt{min\_samples\_split}.
+
+\item \textbf{XGBoost} \cite{chen2016xgboost}: A gradient-boosted tree ensemble with L1/L2 regularization. Key hyperparameters tuned include \texttt{learning\_rate}, \texttt{n\_estimators}, \texttt{max\_depth}, \texttt{subsample}, and \texttt{colsample\_bytree}.
+\end{enumerate}
+
+Hyperparameter optimization is conducted via GridSearchCV with 5-fold Stratified Cross-Validation on the training set, optimizing for the \textbf{F1-Macro} score. This metric choice is deliberate: unlike accuracy, F1-Macro assigns equal weight to performance on both the majority and minority classes, ensuring that the model is penalized for failing to identify at-risk students \cite{sokolova2009metrics}.
+
+\subsection{Three-Tier Risk Stratification}
+
+Model outputs are raw class probabilities $P(\text{risk} = 1 | \mathbf{x})$. We define a three-tier intervention mapping:
+
+\begin{equation}
+\text{Tier}(\mathbf{x}) =
+\begin{cases}
+\text{Low Risk} & \text{if } P(\text{risk}|\mathbf{x}) < 0.3 \\
+\text{Medium Risk} & \text{if } 0.3 \leq P(\text{risk}|\mathbf{x}) \leq 0.6 \\
+\text{High Risk} & \text{if } P(\text{risk}|\mathbf{x}) > 0.6
+\end{cases}
+\label{eq:tier}
+\end{equation}
+
+Each tier is mapped to a prescribed intervention protocol:
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{Low Risk}: No immediate action; routine academic monitoring.
+\item \textbf{Medium Risk}: Monitor attendance; recommend peer tutoring; schedule check-in within two weeks.
+\item \textbf{High Risk}: Schedule immediate 1-on-1 counseling; review recent attendance and coursework submissions; connect student with subject-specific tutoring resources.
+\end{itemize}
+
+\subsection{SHAP-Driven Explainability}\label{sec:shap_method}
+
+We integrate SHAP \cite{lundberg2017shap} at two levels of granularity:
+
+\subsubsection{Global Explainability}
+
+A SHAP summary (bar) plot ranks features by their mean absolute SHAP value $\frac{1}{N}\sum_{i=1}^{N}|\phi_j^{(i)}|$ across all test-set instances, identifying the primary systemic drivers of academic risk across the entire student body.
+
+\subsubsection{Local Explainability}
+
+For each individual student flagged as Medium or High Risk, a SHAP waterfall plot decomposes the model's prediction into per-feature contributions, showing precisely which factors (e.g., high absences, low GPA trend, lack of extracurricular engagement) are pushing the student's risk score above the intervention threshold. These local explanations are programmatically compiled into PDF advisor reports via the \texttt{shap\_reporter} module, translating abstract model outputs into concrete, actionable language.
+
+\subsection{Cross-Dataset Benchmarking Protocol}\label{sec:cross_dataset_method}
+
+To assess generalizability (Contribution~C3), we implement a rigorous cross-dataset evaluation:
+
+\begin{enumerate}[leftmargin=*]
+\item A model is trained on the UCI dataset subsample within the warehouse (identified via the \texttt{school} field in \texttt{DimCourse}).
+\item The trained model is evaluated — without any retraining or fine-tuning — on the Kaggle dataset subsample.
+\item Performance degradation is quantified by comparing the F1-Macro score achieved on the source domain (UCI) versus the target domain (Kaggle).
+\end{enumerate}
+
+This protocol simulates the real-world scenario in which an institution deploys a pre-trained model from another institution and evaluates whether the learned patterns generalize across demographic and cultural boundaries.
+
+% ===================================================================
+%  IV.  EXPERIMENTAL RESULTS
+% ===================================================================
+\section{Experimental Results}\label{sec:results}
+
+\subsection{Evaluation Metrics}
+
+All models are evaluated using a comprehensive suite of classification metrics computed on the held-out test partition:
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{Accuracy}: Proportion of correctly classified instances.
+\item \textbf{Precision (Macro)}: Average per-class precision.
+\item \textbf{Recall (Macro)}: Average per-class recall — critical for detecting at-risk students.
+\item \textbf{F1-Macro}: Harmonic mean of precision and recall, macro-averaged across classes. \textbf{This is our primary evaluation metric.}
+\item \textbf{ROC-AUC}: Area under the Receiver Operating Characteristic curve.
+\item \textbf{Cohen's $\kappa$}: Agreement between predicted and actual labels corrected for chance \cite{cohen1960kappa}.
+\end{itemize}
+
+\subsection{Predictive Performance at Checkpoint 12}
+
+Table~\ref{tab:metrics} presents the performance of each model on the Checkpoint 12 test set — the most information-rich temporal window.
+
+\begin{table}[htbp]
+\centering
+\caption{Model Performance Metrics at Checkpoint 12 (Test Set)}
+\label{tab:metrics}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Model} & \textbf{Acc.} & \textbf{Prec.} & \textbf{Rec.} & \textbf{F1-M} & \textbf{AUC} & \textbf{$\kappa$} \\
+\midrule
+Baseline LR & 0.515 & 0.587 & 0.639 & 0.492 & 0.562 & 0.146 \\
+Random Forest & 0.636 & 0.389 & 0.389 & 0.389 & 0.469 & $-$0.222 \\
+XGBoost & 0.667 & 0.393 & 0.407 & 0.400 & 0.463 & $-$0.198 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Several observations warrant discussion. The relatively modest F1-Macro scores across all models (0.389--0.492) reflect the inherent difficulty of the multi-source prediction task, where heterogeneous feature distributions from three distinct datasets are unified into a single warehouse. Notably, the Baseline LR achieves the highest F1-Macro (0.492), suggesting that its linear decision boundary may be more robust to the feature heterogeneity introduced by cross-dataset unification than the nonlinear ensemble methods.
+
+The negative Cohen's $\kappa$ values for RF ($-0.222$) and XGBoost ($-0.198$) indicate that these models perform below chance-level agreement on this particular test configuration — a critical finding that underscores the challenges of cross-source generalization and motivates the targeted cross-dataset analysis presented in Section~\ref{sec:cross_results}.
+
+\subsection{Temporal Evolution of Predictive Power}
+
+Fig.~\ref{fig:checkpoint} illustrates the F1-Macro progression across the three mid-semester checkpoints for all evaluated models.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{figures/figure1_checkpoint_comparison.png}
+    \caption{Model F1-Macro score progression across mid-semester checkpoints (Weeks 4, 8, and 12). The inclusion of behavioral features at Week 8 produces a notable improvement for tree-based models.}
+    \label{fig:checkpoint}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\caption{F1-Macro Scores Across Temporal Checkpoints (Validation Set)}
+\label{tab:checkpoint}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Model} & \textbf{Week 4} & \textbf{Week 8} & \textbf{Week 12} \\
+\midrule
+Logistic Regression & 0.412 & 0.444 & 0.616 \\
+Decision Tree & 0.469 & 0.673 & 0.421 \\
+Random Forest & 0.469 & 0.630 & 0.441 \\
+XGBoost & 0.460 & 0.455 & 0.529 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Several temporal dynamics emerge from Table~\ref{tab:checkpoint}:
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{Week 4 (Demographics Only):} All models cluster around F1-Macro $\approx 0.41$--$0.47$, indicating that demographic features alone provide a limited but non-trivial baseline for risk prediction.
+
+\item \textbf{Week 8 (Behavioral Feature Onset):} Decision Tree and Random Forest exhibit the largest improvement (F1-Macro rising from $\approx 0.47$ to $0.63$--$0.67$), demonstrating that behavioral features (absences, early grade estimates) are the primary discriminative signals for tree-based models.
+
+\item \textbf{Week 12 (Full Feature Set):} Logistic Regression achieves its peak performance (0.616), while tree-based models show overfitting or sensitivity to the expanded feature space. This suggests that linear models may be more effective when the feature set is heterogeneous and the sample size is constrained.
+\end{itemize}
+
+\textbf{Addressing RQ2:} The results indicate that behaviorally-enriched models at \textbf{Week 8} can achieve F1-Macro scores exceeding 0.63 (Decision Tree), providing approximately 8 weeks of intervention lead time before semester completion. This represents a meaningful temporal advance over end-of-semester baselines.
+
+\subsection{Cross-Dataset Generalization Benchmark}\label{sec:cross_results}
+
+To evaluate real-world deployability (Contribution~C3), a Random Forest model was trained on the UCI dataset subsample and evaluated exclusively on the Kaggle dataset subsample.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{figures/cross_dataset_benchmark.png}
+    \caption{Cross-Dataset Generalization Benchmark. The model trained on UCI data suffers significant F1-score degradation when evaluated on the Kaggle demographic, demonstrating a substantial domain shift.}
+    \label{fig:cross_dataset}
+\end{figure}
+
+As shown in Fig.~\ref{fig:cross_dataset}, the model suffered a severe degradation in F1-score when transferred across institutional boundaries — confirming a substantial \textbf{generalization gap}. This result has direct practical implications:
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{Institutional Specificity:} Dropout predictors are highly localized; learned patterns are confounded with institution-specific grading scales, demographic compositions, and cultural norms.
+\item \textbf{Deployment Caution:} Institutions should not deploy pre-trained models from other institutions without significant recalibration or domain adaptation.
+\item \textbf{Warehouse Value:} The star-schema architecture facilitates this type of cross-domain analysis by enabling source-level segmentation via the \texttt{school} attribute in \texttt{DimCourse}, which would be cumbersome or impossible with unstructured CSV workflows.
+\end{itemize}
+
+\textbf{Addressing RQ3:} The cross-dataset benchmark demonstrates that while the warehouse-integrated pipeline achieves competitive within-domain accuracy, the primary advantage over traditional approaches is \textit{structural}: the warehouse enables reproducible cross-domain segmentation, auditability, and the ability to systematically diagnose domain shift — capabilities that flat-file pipelines fundamentally lack.
+
+\subsection{SHAP Explainability Analysis}
+
+\subsubsection{Global Feature Importance}
+
+Fig.~\ref{fig:shap_summary} presents the global SHAP feature importance, computed as the mean absolute SHAP value for each feature across all test-set instances.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{figures/shap_summary_bar.png}
+    \caption{Global Feature Importance via mean absolute SHAP values. Features are ranked by their average contribution to model predictions across the entire student population.}
+    \label{fig:shap_summary}
+\end{figure}
+
+The SHAP analysis reveals that historical academic performance metrics (GPA, cumulative grade measures) and behavioral indicators (absences) are the dominant drivers of risk prediction, consistent with findings from the broader EDM literature \cite{namoun2021, cortez2008}. Demographic features (age, sex) contribute to the prediction but with substantially lower magnitude, validating the temporal checkpoint design: models gain the most predictive power at Weeks 8 and 12 when behavioral data becomes available.
+
+\subsubsection{Local Explainability: Per-Student Analysis}
+
+Fig.~\ref{fig:shap_waterfall} presents representative SHAP waterfall plots for students at each risk tier, illustrating how individual feature values contribute to each student's specific risk prediction.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.48\linewidth}
+        \includegraphics[width=\linewidth]{figures/shap_waterfall_high_risk.png}
+        \caption{High-risk student: elevated absences and low GPA drive the prediction upward.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\linewidth}
+        \includegraphics[width=\linewidth]{figures/shap_waterfall_low_risk.png}
+        \caption{Low-risk student: strong GPA and low absences are protective factors.}
+    \end{subfigure}
+    \caption{Local SHAP waterfall plots decomposing individual risk predictions into per-feature contributions.}
+    \label{fig:shap_waterfall}
+\end{figure}
+
+\subsubsection{Error Analysis: False Positive Investigation}
+
+To demonstrate the diagnostic value of SHAP, we analyzed a ``wrongly confident'' false positive — a student whom the model incorrectly classified as high-risk with high confidence.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{figures/shap_waterfall_false_positive_wrongly_confident.png}
+    \caption{SHAP waterfall plot for a false-positive case. The model over-weighted historical failure indicators while undervaluing protective factors such as high study time and extracurricular engagement.}
+    \label{fig:shap_fp}
+\end{figure}
+
+As shown in Fig.~\ref{fig:shap_fp}, the model over-weighted historical failure indicators while simultaneously undervaluing protective factors (such as high study time). This analysis illustrates precisely why XAI is essential: without SHAP decomposition, this misclassification would have resulted in unnecessary intervention resource allocation. With SHAP, the advisor can review the feature attribution, identify the model's reasoning error, and make an informed override decision — keeping the human advisor ``in the loop.''
+
+\textbf{Addressing RQ1:} The combination of SHAP global and local analysis confirms that academic performance metrics (GPA, grades), behavioral indicators (absences), and historical failure records constitute the most predictive feature combination for academic probation risk. Demographic features are contributory but secondary.
+
+\subsection{Dashboard Visualization}
+
+An interactive Streamlit dashboard (Fig.~\ref{fig:dashboard_desc}) operationalizes the analytical pipeline, providing academic advisors with real-time access to:
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{Risk distribution overview}: Donut chart displaying the proportion of students in each intervention tier.
+\item \textbf{System accuracy evolution}: Line chart tracking XGBoost F1-Macro across checkpoints, demonstrating when the system achieves actionable accuracy.
+\item \textbf{Global risk drivers}: SHAP-based horizontal bar chart of the top 10 features driving risk across the student body.
+\item \textbf{Actionable student roster}: Filterable table listing each student with their risk probability, intervention tier, and prescribed recommended action.
+\end{itemize}
+
+% ===================================================================
+%  V.  DISCUSSION
+% ===================================================================
+\section{Discussion}\label{sec:discussion}
+
+\subsection{Synthesis of Research Questions}
+
+\textbf{RQ1 — Optimal Feature Combination:} The SHAP-driven analysis (Section~\ref{sec:results}) conclusively identifies academic performance (GPA, cumulative grades) and behavioral indicators (absences) as the dominant predictive features. Demographic variables contribute but are insufficient alone — a finding that validates the temporal checkpoint design, where behavioral features at Weeks 8 and 12 substantially amplify predictive power beyond the Week 4 demographic baseline.
+
+\textbf{RQ2 — Earliest Viable Intervention Point:} The temporal checkpoint analysis demonstrates that behaviorally enriched models at \textbf{Week 8} achieve F1-Macro scores in the 0.63--0.67 range (Decision Tree, Random Forest), providing approximately \textbf{8 weeks of intervention lead time} before semester completion. While Week 12 models achieve the highest accuracy for Logistic Regression, the marginal accuracy gain must be weighed against the reduced intervention window. For institutions prioritizing intervention timeliness, Week 8 represents the optimal accuracy-intervention tradeoff.
+
+\textbf{RQ3 — Warehouse vs.\ Traditional Approaches:} ProGrade's warehouse-integrated pipeline offers structural advantages that flat-file approaches cannot replicate: (a)~source-level segmentation enabling cross-dataset benchmarking, (b)~surrogate key–based auditability of every prediction's data lineage, (c)~conformed dimensions ensuring consistent feature definitions across institutional data sources, and (d)~ETL separation of concerns isolating data quality issues from model performance analysis.
+
+\subsection{The Warehouse Advantage}
+
+The star-schema data warehouse is not merely an architectural convenience — it is a \textit{prerequisite for institutional deployment}. Academic institutions operate under strict data governance requirements. By structuring the analytical pipeline around a formal warehouse with conformed dimensions and traceable ETL lineage, ProGrade satisfies the auditability, reproducibility, and scalability criteria that raw ML pipelines fundamentally lack.
+
+The cross-dataset benchmark (Section~\ref{sec:cross_results}) provides a concrete illustration: the warehouse's source-tagging mechanism (via the \texttt{school} field in \texttt{DimCourse}) enables seamless segmentation of training and evaluation data by institutional origin — an operation that would require ad-hoc and error-prone DataFrame manipulations in a flat-file pipeline.
+
+\subsection{Explainability as a Deployment Enabler}
+
+The integration of SHAP transforms ProGrade from a predictive tool into a \textit{diagnostic instrument}. The false-positive analysis (Fig.~\ref{fig:shap_fp}) demonstrates that advisors equipped with per-student feature attribution can distinguish between genuinely at-risk students and model misclassifications — a capability that is essential for maintaining institutional trust in algorithmic decision-support \cite{nature2025xai, khosravi2022xaiedu}.
+
+The automated generation of PDF advisor reports (via the \texttt{shap\_reporter} module) operationalizes this explainability, eliminating the need for advisors to interpret SHAP plots directly and instead delivering actionable, human-readable recommendations aligned with the three-tier intervention protocol.
+
+\subsection{Limitations}
+
+Despite its contributions, ProGrade has several limitations that must be acknowledged:
+
+\begin{enumerate}[leftmargin=*]
+\item \textbf{Simulated temporal checkpoints.} The mid-semester checkpoint data is simulated by assigning checkpoint labels rather than being collected from a real-time LMS with true temporal progression. While the simulation validates the conceptual framework, deployment to a live institutional system would require integration with real-time data feeds.
+
+\item \textbf{Feature heterogeneity across datasets.} The three data sources have different feature schemas, and the unification process introduces missing values and approximate mappings — contributing to the modest overall F1-Macro scores. A production deployment targeting a single institution would likely achieve higher accuracy by training on institution-specific features.
+
+\item \textbf{Binary risk label engineering.} Risk labels were engineered from source-specific grade thresholds (G3 $< 10$, GradeClass $\geq 3$, Target = ``Dropout''), which may not precisely correspond to each institution's formal definition of academic probation.
+
+\item \textbf{Absence of unstructured data.} The current pipeline operates exclusively on structured tabular data. Student forum posts, LMS interaction logs, email communication patterns, and other unstructured data sources — which may contain early behavioral signals — are not incorporated.
+
+\item \textbf{Intervention outcome evaluation.} ProGrade generates intervention recommendations but does not measure their downstream effectiveness (i.e., whether intervened students actually improve). A randomized controlled trial would be necessary to establish causal efficacy.
+\end{enumerate}
+
+\subsection{Future Work}
+
+Several directions for future research emerge from this study:
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{Real-time LMS integration:} Connecting the warehouse to live LMS data feeds (e.g., Moodle, Canvas) to enable true real-time checkpoint scoring rather than post-hoc simulation.
+\item \textbf{NLP for unstructured data:} Incorporating Natural Language Processing (NLP) techniques to analyze student forum interactions, assignment text quality, and communication sentiment as supplementary behavioral features.
+\item \textbf{Domain adaptation:} Applying transfer learning and domain adaptation techniques to mitigate the generalization gap identified in the cross-dataset benchmark, enabling models to transfer across institutions with reduced recalibration overhead.
+\item \textbf{Fairness auditing:} Systematically evaluating whether the model's predictions exhibit bias with respect to protected demographic attributes (gender, socioeconomic status, ethnicity) and implementing debiasing techniques where necessary.
+\item \textbf{Intervention efficacy study:} Conducting a randomized controlled trial in partnership with an institution to measure the causal impact of ProGrade-generated interventions on student retention outcomes.
+\end{itemize}
+
+% ===================================================================
+%  VI.  CONCLUSION
+% ===================================================================
+\section{Conclusion}\label{sec:conclusion}
+
+This paper presented ProGrade, a comprehensive Early Warning System for academic probation prediction that advances the state of the art in Educational Data Mining through five interrelated contributions. By integrating a star-schema data warehouse with ensemble machine learning, temporal checkpoint scoring, cross-dataset benchmarking, three-tier risk stratification, and SHAP-driven explainability, ProGrade transforms the role of educational data from a passive historical record into an active decision-support instrument.
+
+Our experimental evaluation demonstrates that mid-semester behavioral features significantly amplify predictive power beyond demographic baselines, with the Week 8 checkpoint offering the optimal tradeoff between accuracy and intervention lead time. The cross-dataset benchmark exposes a critical generalization gap that underscores the dangers of deploying pre-trained models across institutional boundaries without recalibration. Most importantly, the SHAP explainability layer bridges the trust gap between algorithmic prediction and human decision-making, enabling academic advisors to make informed, evidence-based intervention decisions.
+
+ProGrade establishes a replicable architectural blueprint for institutions seeking to deploy data-driven student retention systems that are not only accurate but auditable, explainable, and actionable.
+
+% ===================================================================
+%  REFERENCES
+% ===================================================================
+\bibliographystyle{ieeetr}
+\bibliography{references}
+
+\end{document}

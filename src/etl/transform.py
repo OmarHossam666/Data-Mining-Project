@@ -14,6 +14,38 @@ def transform_data(raw_datasets):
         logger.info(f"Transforming dataset: {name}...")
         df_clean = df.copy()
 
+        # 0. Canonical Schema Mapping
+        if name == 'kaggle':
+            df_clean = df_clean.rename(columns={
+                'Age': 'age', 'Gender': 'sex', 'ParentalEducation': 'parent_edu',
+                'StudyTimeWeekly': 'study_time', 'Absences': 'absences',
+                'Extracurricular': 'extracurricular', 'Tutoring': 'paid_classes',
+                'GPA': 'gpa'
+            })
+            if 'sex' in df_clean.columns:
+                df_clean['sex'] = df_clean['sex'].map({0: 'F', 1: 'M'}).fillna(df_clean['sex'])
+        elif name == 'uci_student':
+            df_clean = df_clean.rename(columns={
+                'famsize': 'family_size', 'internet': 'internet_access',
+                'paid': 'paid_classes', 'studytime': 'study_time',
+                'failures': 'failures_history', 'activities': 'extracurricular'
+            })
+        elif name == 'uci_dropout':
+            df_clean = df_clean.rename(columns={
+                'Age at enrollment': 'age', 'Gender': 'sex',
+                'Curricular units 2nd sem (grade)': 'gpa',
+                'Course': 'subject', 'Scholarship holder': 'scholarship_flag',
+                'Nacionality': 'nationality'
+            })
+            if 'sex' in df_clean.columns:
+                df_clean['sex'] = df_clean['sex'].map({1: 'M', 0: 'F'}).fillna(df_clean['sex'])
+
+        bool_cols = ['internet_access', 'paid_classes', 'extracurricular', 'first_gen_student', 'scholarship_flag']
+        for col in bool_cols:
+            if col in df_clean.columns:
+                # Convert explicitly to boolean mapping safely
+                df_clean[col] = df_clean[col].map({'yes': True, 'no': False, 1: True, 0: False, 'Yes': True, 'No': False, True: True, False: False}).astype(bool)
+
         # 1. Missing Value Strategy (Median/Mode) — with edge-case protection
         num_cols = df_clean.select_dtypes(include=[np.number]).columns
         cat_cols = df_clean.select_dtypes(exclude=[np.number]).columns

@@ -54,3 +54,34 @@ Contains broader socioeconomic and demographic variables.
 * `socioeconomic_tier` (String): Classification of the student's socioeconomic status.
 * `first_gen_student` (Boolean): Indicates if the student is the first in their family to attend higher education.
 * `scholarship_flag` (Boolean): Indicates if the student is a scholarship recipient.
+
+## 3. Gold Layer: `student_risk_mart.csv`
+A comprehensive, canonical datamart combining facts and dimensions for downstream analytical consumption.
+* `student_id` (Int): Surrogate key uniquely identifying a student.
+* `fact_id` (Int): Surrogate key for the original fact record.
+* `year` (Int): The academic year.
+* `period` (String): The academic period or term (e.g., 'G1', 'G2', 'G3').
+* `checkpoint_week` (String): The specific evaluation milestone ('4', '8', '12', 'final').
+* `age` (Int): The student's age.
+* `sex` (String): Gender of the student ('Male' or 'Female').
+* `address` (String): Home address type ('Urban' or 'Rural').
+* `family_size` (String): Family size indicator ('LE3' or 'GT3').
+* `parent_edu` (String): Highest level of parental education.
+* `internet_access` (Boolean): Indicates whether the student has internet access at home.
+* `paid_classes` (Boolean): Indicates if the student attends extra paid classes.
+* `school` (String): The school the student is attending.
+* `subject` (String): The subject being studied (e.g., 'Math', 'Portuguese').
+* `study_time` (Int): Numeric scale representing weekly study time.
+* `failures_history` (Int): Number of past class failures.
+* `extracurricular` (Boolean): Indicates participation in extracurricular activities.
+* `nationality` (String): The student's nationality.
+* `socioeconomic_tier` (String): Classification of the student's socioeconomic status.
+* `first_gen_student` (Boolean): Indicates if the student is the first in family to attend higher education.
+* `scholarship_flag` (Boolean): Indicates if the student is a scholarship recipient.
+* `gpa` (Float): Grade Point Average at the time of checkpoint.
+* `gpa_bracket` (String): Qualitative tier mapping of GPA ('Excellent', 'Good', 'Average', 'Poor').
+* `absences` (Int): Total absences accumulated up to the checkpoint.
+* `attendance_tier` (String): Grouping metric for absences ('High Attendance', 'Medium Attendance', 'Low Attendance').
+* `risk_score` (Float): Probability score of academic failure from ML pipeline.
+* `risk_label` (Int): Binary classification (0 = Low, 1 = High).
+* `risk_status` (String): Derived text status mapping `risk_label` ('Low Risk' or 'High Risk').

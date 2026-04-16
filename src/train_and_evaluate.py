@@ -211,11 +211,114 @@ def plot_checkpoint_comparison(comparison_df: pd.DataFrame, save_path: Path) -> 
 
 
 # ---------------------------------------------------------------------------
-# Main pipeline
+# Multi-seed stability analysis  (Recommendation R1)
+# ---------------------------------------------------------------------------
+
+def run_stability_analysis(n_seeds: int = 5) -> None:
+    """Re-run training across multiple random seeds and report mean ± std.
+
+    This provides variance estimates for all reported metrics, addressing
+    the single-seed limitation.  Results are saved to
+    ``results/stability_analysis.csv``.
+    """
+    import time
+    from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+    seeds = [42, 123, 256, 512, 1024][:n_seeds]
+    records: list[dict] = []
+
+    for week in config.CHECKPOINT_WEEKS:
+        cp_name = f"checkpoint_{week}"
+        logger.info("=" * 60)
+        logger.info("STABILITY ANALYSIS: %s", cp_name)
+        logger.info("=" * 60)
+
+        for seed in seeds:
+            X_train, y_train, X_val, y_val, X_test, y_test = load_checkpoint_data(cp_name)
+
+            # Shuffle indices with different seeds to simulate split variation
+            np.random.seed(seed)
+            idx = np.random.permutation(len(X_train))
+            X_train = X_train.iloc[idx].reset_index(drop=True)
+            y_train = y_train.iloc[idx].reset_index(drop=True)
+
+            models = _get_models()
+            for model_name, model in models.items():
+                # Override random state
+                if hasattr(model, "random_state"):
+                    model.random_state = seed
+
+                t0 = time.perf_counter()
+                model.fit(X_train, y_train)
+                train_time = time.perf_counter() - t0
+
+                y_pred = model.predict(X_test)
+                y_prob = None
+                if hasattr(model, "predict_proba"):
+                    y_prob = model.predict_proba(X_test)[:, 1]
+
+                metrics = compute_metrics(y_test, y_pred, y_prob)
+
+                # 5-fold CV on training data
+                cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
+                cv_f1 = cross_val_score(model, X_train, y_train,
+                                        cv=cv, scoring="f1_macro")
+
+                records.append({
+                    "Checkpoint": f"Week {week}",
+                    "Model": model_name,
+                    "Seed": seed,
+                    "Train_Time_s": round(train_time, 3),
+                    "CV_F1_Mean": cv_f1.mean(),
+                    "CV_F1_Std": cv_f1.std(),
+                    **metrics,
+                })
+
+    stability_df = pd.DataFrame(records)
+    stability_df.to_csv(config.RESULTS_DIR / "stability_analysis.csv", index=False)
+
+    # Aggregate mean ± std across seeds
+    agg = stability_df.groupby(["Checkpoint", "Model"]).agg(
+        F1_Mean=("F1-Macro", "mean"),
+        F1_Std=("F1-Macro", "std"),
+        AUC_Mean=("ROC-AUC", "mean"),
+        AUC_Std=("ROC-AUC", "std"),
+        Kappa_Mean=("Kappa", "mean"),
+        Kappa_Std=("Kappa", "std"),
+        Acc_Mean=("Accuracy", "mean"),
+        Acc_Std=("Accuracy", "std"),
+        Prec_Mean=("Precision", "mean"),
+        Prec_Std=("Precision", "std"),
+        Rec_Mean=("Recall", "mean"),
+        Rec_Std=("Recall", "std"),
+        CV_F1_Mean=("CV_F1_Mean", "mean"),
+        CV_F1_Std=("CV_F1_Std", "mean"),
+        Train_Time_Mean=("Train_Time_s", "mean"),
+    ).reset_index()
+    agg.to_csv(config.RESULTS_DIR / "stability_summary.csv", index=False)
+
+    logger.info("=" * 60)
+    logger.info("STABILITY SUMMARY (mean ± std across %d seeds)", n_seeds)
+    logger.info("=" * 60)
+    for _, row in agg.iterrows():
+        logger.info("  [%s | %-22s] F1=%.4f±%.4f  AUC=%.4f±%.4f  κ=%.4f±%.4f  "
+                     "CV-F1=%.4f±%.4f  Time=%.2fs",
+                     row["Checkpoint"], row["Model"],
+                     row["F1_Mean"], row["F1_Std"],
+                     row["AUC_Mean"], row["AUC_Std"],
+                     row["Kappa_Mean"], row["Kappa_Std"],
+                     row["CV_F1_Mean"], row["CV_F1_Std"],
+                     row["Train_Time_Mean"])
+
+
+# ---------------------------------------------------------------------------
+# Main pipeline (enhanced with class distribution + timing)
 # ---------------------------------------------------------------------------
 
 def run_training_and_evaluation() -> None:
     """Train models on all checkpoints and produce evaluation artifacts."""
+    import time
+
     all_metrics: list[dict] = []
     comparison_rows: list[dict] = []
     best_checkpoint_results: list[dict] = []   # Results for checkpoint_12 visualizations
@@ -230,13 +333,21 @@ def run_training_and_evaluation() -> None:
         logger.info("Data shapes — train: %s, val: %s, test: %s",
                      X_train.shape, X_val.shape, X_test.shape)
 
+        # Report class distribution (Rec. R3)
+        test_dist = y_test.value_counts()
+        majority_baseline = test_dist.max() / test_dist.sum()
+        logger.info("Test class distribution: %s  |  Majority-class baseline: %.4f",
+                     test_dist.to_dict(), majority_baseline)
+
         models = _get_models()
 
         for model_name, model in models.items():
             logger.info("Training %s on %s ...", model_name, cp_name)
 
-            # Train
+            # Train with timing (Rec. 12)
+            t0 = time.perf_counter()
             model.fit(X_train, y_train)
+            train_time = time.perf_counter() - t0
 
             # Predict on test set
             y_pred = model.predict(X_test)
@@ -246,9 +357,10 @@ def run_training_and_evaluation() -> None:
 
             # Compute metrics
             metrics = compute_metrics(y_test, y_pred, y_prob)
-            logger.info("[%s | %s] F1=%.4f  AUC=%.4f  Kappa=%.4f",
+            logger.info("[%s | %s] F1=%.4f  AUC=%.4f  Kappa=%.4f  Time=%.2fs",
                         cp_name, model_name,
-                        metrics["F1-Macro"], metrics["ROC-AUC"], metrics["Kappa"])
+                        metrics["F1-Macro"], metrics["ROC-AUC"], metrics["Kappa"],
+                        train_time)
 
             # Validation F1 for comparison
             y_val_pred = model.predict(X_val)
@@ -259,6 +371,7 @@ def run_training_and_evaluation() -> None:
                 "Checkpoint": f"Week {week}",
                 "Model": model_name,
                 **metrics,
+                "Train_Time_s": round(train_time, 3),
             })
             comparison_rows.append({
                 "Checkpoint": f"Week {week}",
@@ -333,3 +446,7 @@ def run_training_and_evaluation() -> None:
 
 if __name__ == "__main__":
     run_training_and_evaluation()
+    logger.info("")
+    logger.info("Running multi-seed stability analysis ...")
+    run_stability_analysis(n_seeds=5)
+

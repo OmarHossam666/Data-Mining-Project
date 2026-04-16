@@ -1,0 +1,167 @@
+\begin{thebibliography}{10}
+
+\bibitem{realinho2022}
+V.~Realinho, J.~Machado, L.~Baptista, and M.~V. Martins, ``Predicting student
+  dropout and academic success,'' {\em Data}, vol.~7, no.~11, p.~146, 2022.
+
+\bibitem{mduma2019}
+N.~Mduma, K.~Kalegele, and D.~Machuve, ``A survey of machine learning
+  approaches and techniques for student dropout prediction,'' {\em Data Science
+  Journal}, vol.~18, p.~14, 2019.
+
+\bibitem{romero2020}
+C.~Romero and S.~Ventura, ``Educational data mining and learning analytics: An
+  updated survey,'' {\em WIREs Data Mining and Knowledge Discovery}, vol.~10,
+  no.~3, p.~e1355, 2020.
+
+\bibitem{baker2014edm}
+R.~S.~J.~d. Baker and P.~S. Inventado, ``Educational data mining and learning
+  analytics,'' in {\em Learning Analytics: From Research to Practice},
+  pp.~61--75, Springer, 2014.
+
+\bibitem{breiman2001rf}
+L.~Breiman, ``Random forests,'' {\em Machine Learning}, vol.~45, no.~1,
+  pp.~5--32, 2001.
+
+\bibitem{chen2016xgboost}
+T.~Chen and C.~Guestrin, ``{XGBoost}: A scalable tree boosting system,'' in
+  {\em Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge
+  Discovery and Data Mining}, pp.~785--794, 2016.
+
+\bibitem{namoun2021}
+A.~Namoun and A.~Alshanqiti, ``Predicting student performance using data mining
+  and learning analytics techniques: A systematic literature review,'' {\em
+  Applied Sciences}, vol.~11, no.~1, p.~237, 2021.
+
+\bibitem{hellas2018}
+A.~Hellas, P.~Ihantola, A.~Petersen, V.~V. Ajanovski, M.~Gutica, T.~Hynninen,
+  A.~Knutas, J.~Leinonen, C.~Messom, and S.~N. Liao, ``Predicting academic
+  performance: A systematic literature review,'' in {\em Proceedings Companion
+  of the 23rd Annual ACM Conference on Innovation and Technology in Computer
+  Science Education}, pp.~175--199, 2018.
+
+\bibitem{kimball2013dw}
+R.~Kimball and M.~Ross, {\em The Data Warehouse Toolkit: The Definitive Guide
+  to Dimensional Modeling}.
+\newblock John Wiley \& Sons, 3rd~ed., 2013.
+
+\bibitem{abelladosantos2019edudw}
+V.~Abella-Garc{\'{\i}}a, J.~Ortega-Mohedano, and V.~S{\'a}nchez-Horreo,
+  ``Towards educational data warehousing: A review of architectures and
+  challenges,'' {\em Information}, vol.~10, no.~5, p.~167, 2019.
+
+\bibitem{fernandez2018smotesurvey}
+A.~Fern{\'a}ndez, S.~Garc{\'{\i}}a, M.~Galar, R.~C. Prati, B.~Krawczyk, and
+  F.~Herrera, {\em Learning from Imbalanced Data Sets}.
+\newblock Springer, 2018.
+
+\bibitem{chawla2002smote}
+N.~V. Chawla, K.~W. Bowyer, L.~O. Hall, and W.~P. Kegelmeyer, ``{SMOTE}:
+  Synthetic minority over-sampling technique,'' {\em Journal of Artificial
+  Intelligence Research}, vol.~16, pp.~321--357, 2002.
+
+\bibitem{marbouti2016ews}
+F.~Marbouti, H.~A. Diefes-Dux, and K.~Madhavan, ``Models for early prediction
+  of at-risk students in a course using standards-based grading,'' {\em
+  Computers \& Education}, vol.~103, pp.~1--15, 2016.
+
+\bibitem{aulck2020temporal}
+L.~Aulck, N.~Velagapudi, J.~Blumenstock, and J.~West, ``Predicting student
+  dropout in higher education,'' {\em Proceedings of the AAAI Conference on
+  Artificial Intelligence}, vol.~34, pp.~13297--13298, 2020.
+
+\bibitem{khosravi2022xaiedu}
+H.~Khosravi, S.~B. Shum, G.~Chen, C.~Conati, Y.-S. Tsai, J.~Kay, S.~Knight,
+  R.~Martinez-Maldonado, S.~Sadiq, and D.~Ga{\v{s}}evi{\'c}, ``Explainable
+  artificial intelligence in education,'' {\em Computers and Education:
+  Artificial Intelligence}, vol.~3, p.~100074, 2022.
+
+\bibitem{nature2025xai}
+Y.~Alwadi {\em et~al.}, ``Explainable ai-driven early detection of academic
+  failure: Integrating shap for transparent student support,'' {\em Scientific
+  Reports}, vol.~15, p.~16311, 2025.
+
+\bibitem{albreiki2021}
+B.~Albreiki, N.~Zaki, and H.~Alashwal, ``A systematic literature review of
+  student's performance prediction using machine learning techniques,'' {\em
+  Education Sciences}, vol.~11, no.~9, p.~552, 2021.
+
+\bibitem{umer2024dropout}
+R.~Umer, A.~Mathrani, and D.-B. Luh, ``Predicting student dropouts with machine
+  learning: A review,'' {\em Technology in Society}, vol.~76, p.~102474, 2024.
+
+\bibitem{arnold2012ews}
+K.~E. Arnold and M.~D. Pistilli, ``Course signals at {Purdue}: Using learning
+  analytics to increase student success,'' in {\em Proceedings of the 2nd
+  International Conference on Learning Analytics and Knowledge}, pp.~267--270,
+  2012.
+
+\bibitem{jayaprakash2014ews}
+S.~M. Jayaprakash, E.~W. Moody, E.~J.~M. Laur{\'{\i}}a, J.~R. Regan, and J.~D.
+  Baron, ``Early alert of academically at-risk students: An open source
+  analytics initiative,'' {\em Journal of Learning Analytics}, vol.~1, no.~1,
+  pp.~6--47, 2014.
+
+\bibitem{martins2023phased}
+M.~V. Martins, J.~Tolledo, J.~Machado, L.~Baptista, and V.~Realinho,
+  ``Multi-class phased prediction of academic performance and dropout in higher
+  education,'' {\em Applied Sciences}, vol.~13, no.~8, p.~4702, 2023.
+
+\bibitem{lundberg2017shap}
+S.~M. Lundberg and S.-I. Lee, ``A unified approach to interpreting model
+  predictions,'' in {\em Advances in Neural Information Processing Systems 30
+  ({NeurIPS} 2017)}, pp.~4765--4774, 2017.
+
+\bibitem{chen2022deep}
+F.~Chen, Y.~Cui, and M.-W. Chu, ``Utilizing deep learning and graph mining to
+  identify dropout-prone students,'' {\em Journal of Educational Computing
+  Research}, vol.~60, no.~5, pp.~1213--1236, 2022.
+
+\bibitem{gardner2023crossinstitutional}
+J.~Gardner, C.~Brooks, and R.~S. Baker, ``Cross-institutional transfer learning
+  for educational models: Implications for model performance, fairness, and
+  equity,'' in {\em Proceedings of the 2023 ACM Conference on Fairness,
+  Accountability, and Transparency ({FAccT} 2023)}, pp.~1664--1676, 2023.
+
+\bibitem{cortez2008}
+P.~Cortez and A.~Silva, ``Using data mining to predict secondary school student
+  performance,'' in {\em Proceedings of the 5th {FUture BUsiness TEChnology}
+  Conference ({FUBUTEC} 2008)} (A.~Brito and J.~Teixeira, eds.), (Porto,
+  Portugal), pp.~5--12, EUROSIS, 2008.
+\newblock UCI Machine Learning Repository, Dataset \#320.
+
+\bibitem{uci_dropout2021}
+V.~Realinho, J.~Machado, L.~Baptista, and M.~V. Martins, ``Predict students'
+  dropout and academic success.'' UCI Machine Learning Repository, 2021.
+\newblock Dataset \#697. \url{https://archive.ics.uci.edu/dataset/697}.
+
+\bibitem{kaggle_student2023}
+R.~E. Kharoua, ``Students performance dataset.'' Kaggle, 2023.
+\newblock
+  \url{https://www.kaggle.com/datasets/rabieelkharoua/students-performance-dataset}.
+
+\bibitem{chandrashekar2014featureselection}
+G.~Chandrashekar and F.~Sahin, ``A survey on feature selection methods,'' {\em
+  Computers \& Electrical Engineering}, vol.~40, no.~1, pp.~16--28, 2014.
+
+\bibitem{hosmer2013logistic}
+D.~W. Hosmer, S.~Lemeshow, and R.~X. Sturdivant, {\em Applied Logistic
+  Regression}.
+\newblock John Wiley \& Sons, 3rd~ed., 2013.
+
+\bibitem{sokolova2009metrics}
+M.~Sokolova and G.~Lapalme, ``A systematic analysis of performance measures for
+  classification tasks,'' {\em Information Processing \& Management}, vol.~45,
+  no.~4, pp.~427--437, 2009.
+
+\bibitem{cohen1960kappa}
+J.~Cohen, ``A coefficient of agreement for nominal scales,'' {\em Educational
+  and Psychological Measurement}, vol.~20, no.~1, pp.~37--46, 1960.
+
+\bibitem{icdsns2024ensemble}
+F.~Ahmad, I.~Mushtaq, S.~A. Khan, and A.~H. Syed, ``Fine-tuning student success
+  prediction through ensemble models intertwined with feature engineering to
+  leverage academic interventions,'' in {\em 2024 International Conference on
+  Data Science and Network Security ({ICDSNS})}, IEEE, 2024.
+
+\end{thebibliography}

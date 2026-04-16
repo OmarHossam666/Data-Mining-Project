@@ -235,16 +235,9 @@ def process_checkpoint(
         if X[col].isnull().any():
             X[col] = X[col].fillna(X[col].median())
 
-    # Feature selection using Mutual Information (better than f_classif for mixed types)
-    k = min(top_k, X.shape[1])
-    logger.info("[%s] Selecting top %d features via Mutual Information ...", name, k)
-    mi_scores = mutual_info_classif(X, y, random_state=config.RANDOM_SEED)
-    mi_ranking = pd.Series(mi_scores, index=X.columns).sort_values(ascending=False)
-    selected_features = mi_ranking.head(k).index.tolist()
-    X = X[selected_features]
-    logger.info("[%s] Selected features: %s", name, selected_features)
-
-    # Train / Val / Test split (70 / 15 / 15)
+    # ── Train / Val / Test split (70 / 15 / 15) ─────────────────────────
+    # The split is performed BEFORE feature selection to prevent any
+    # information from the test set from influencing the MI scores.
     X_train, X_temp, y_train, y_temp = train_test_split(
         X, y,
         test_size=config.TEST_SIZE,
@@ -261,13 +254,26 @@ def process_checkpoint(
     logger.info("[%s] Split sizes — train: %d, val: %d, test: %d",
                 name, len(X_train), len(X_val), len(X_test))
 
-    # SMOTE on training set ONLY
+    # ── Feature selection on TRAINING data only (leakage-free) ────────
+    # Mutual Information is computed exclusively on the training partition.
+    # Validation and test sets are then subsetted to the same features.
+    k = min(top_k, X_train.shape[1])
+    logger.info("[%s] Selecting top %d features via Mutual Information (training data only) ...", name, k)
+    mi_scores = mutual_info_classif(X_train, y_train, random_state=config.RANDOM_SEED)
+    mi_ranking = pd.Series(mi_scores, index=X_train.columns).sort_values(ascending=False)
+    selected_features = mi_ranking.head(k).index.tolist()
+    X_train = X_train[selected_features]
+    X_val = X_val[selected_features]
+    X_test = X_test[selected_features]
+    logger.info("[%s] Selected features: %s", name, selected_features)
+
+    # ── SMOTE on training set ONLY ────────────────────────────────────
     logger.info("[%s] Before SMOTE: %s", name, pd.Series(y_train).value_counts().to_dict())
-    smote = SMOTE(random_state=config.RANDOM_SEED)
+    smote = SMOTE(k_neighbors=5, random_state=config.RANDOM_SEED)
     X_train_res, y_train_res = smote.fit_resample(X_train, y_train)
     logger.info("[%s] After  SMOTE: %s", name, pd.Series(y_train_res).value_counts().to_dict())
 
-    # StandardScaler fit on train ONLY
+    # ── StandardScaler fit on train ONLY ──────────────────────────────
     scaler = StandardScaler()
     X_train_scaled = pd.DataFrame(
         scaler.fit_transform(X_train_res), columns=selected_features

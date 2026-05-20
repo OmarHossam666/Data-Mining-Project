@@ -1,12 +1,16 @@
 """
 ProGrade Star-Schema Data Warehouse Models (Silver Layer).
 
-Defines four dimension tables and one fact table using SQLAlchemy ORM.
-The grain is **one row per student-course-semester observation**.
+Defines three dimension tables and one fact table using SQLAlchemy ORM.
+The grain is **one row per student-course observation**.
 
 Schema follows Kimball star-schema principles:
   - Dimensions hold descriptive attributes (slowly changing)
   - Fact table holds numeric measurements and foreign keys
+
+Note: DimSemester was removed because no source dataset provides temporal
+(year/period/checkpoint) data. Temporal checkpoint simulation is handled
+entirely in the Feature Engineering phase via feature masking.
 """
 
 from __future__ import annotations
@@ -67,22 +71,6 @@ class DimCourse(Base):
         return f"<DimCourse(id={self.course_id}, subject={self.subject})>"
 
 
-class DimSemester(Base):
-    """Temporal dimension capturing the academic timeline."""
-
-    __tablename__ = "dim_semester"
-
-    semester_id: int = Column(Integer, primary_key=True, autoincrement=True)
-    year: int | None = Column(Integer)
-    period: str | None = Column(String(10))
-    checkpoint_week: int | None = Column(Integer)  # Fixed: was String(20)
-
-    facts = relationship("StudentRiskFact", back_populates="semester")
-
-    def __repr__(self) -> str:
-        return f"<DimSemester(id={self.semester_id}, week={self.checkpoint_week})>"
-
-
 class DimDemographics(Base):
     """Broader socioeconomic and demographic variables."""
 
@@ -90,8 +78,6 @@ class DimDemographics(Base):
 
     demo_id: int = Column(Integer, primary_key=True, autoincrement=True)
     nationality: str | None = Column(String(50))
-    socioeconomic_tier: str | None = Column(String(20))
-    first_gen_student: bool | None = Column(Boolean)
     scholarship_flag: bool | None = Column(Boolean)
 
     facts = relationship("StudentRiskFact", back_populates="demographics")
@@ -105,11 +91,10 @@ class DimDemographics(Base):
 # ---------------------------------------------------------------------------
 
 class StudentRiskFact(Base):
-    """Central fact table — one row per student-course-semester observation.
+    """Central fact table — one row per student-course observation.
 
     Contains numeric measurements (GPA, absences, risk metrics) and
-    student-level academic behaviour attributes that were previously
-    mis-placed in DimCourse.
+    student-level academic behaviour attributes.
     """
 
     __tablename__ = "fact_student_risk"
@@ -119,7 +104,6 @@ class StudentRiskFact(Base):
     # Foreign keys
     student_id: int = Column(Integer, ForeignKey("dim_student.student_id"), nullable=False)
     course_id: int = Column(Integer, ForeignKey("dim_course.course_id"), nullable=False)
-    semester_id: int = Column(Integer, ForeignKey("dim_semester.semester_id"), nullable=False)
     demo_id: int = Column(Integer, ForeignKey("dim_demographics.demo_id"), nullable=False)
 
     # Measurements
@@ -128,22 +112,20 @@ class StudentRiskFact(Base):
     risk_score: float | None = Column(Float)
     risk_label: int | None = Column(Integer)      # 0 = Low Risk, 1 = High Risk
 
-    # Student-course behaviour (moved from DimCourse — these are per-enrollment)
-    study_time: int | None = Column(Integer)
+    # Student-course behaviour (per-enrollment measurements)
+    study_time: float | None = Column(Float)
     failures_history: int | None = Column(Integer)
     extracurricular: bool | None = Column(Boolean)
 
     # Relationships
     student = relationship("DimStudent", back_populates="facts")
     course = relationship("DimCourse", back_populates="facts")
-    semester = relationship("DimSemester", back_populates="facts")
     demographics = relationship("DimDemographics", back_populates="facts")
 
     # Performance indexes
     __table_args__ = (
         Index("ix_fact_student", "student_id"),
         Index("ix_fact_course", "course_id"),
-        Index("ix_fact_semester", "semester_id"),
         Index("ix_fact_demo", "demo_id"),
         Index("ix_fact_risk", "risk_label"),
     )

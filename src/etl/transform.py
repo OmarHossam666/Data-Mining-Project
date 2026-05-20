@@ -14,6 +14,8 @@ Key design decisions:
   - **Processed CSVs preserve ALL columns** — the star-schema warehouse
     captures a subset; the ML pipeline reads from processed CSVs for the
     full feature set.
+  - **GPA normalization** — all datasets are normalized to a 0.0–4.0 GPA
+    scale for consistent Gold Layer analytics.
 """
 
 from __future__ import annotations
@@ -134,6 +136,17 @@ def _impute_missing(df: pd.DataFrame, dataset_name: str) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
+# GPA Normalization — all datasets to 0.0–4.0 scale
+# ---------------------------------------------------------------------------
+
+def _normalize_gpa_to_4_scale(value: float, source_max: float) -> float:
+    """Normalize a GPA value from a source scale to the 0.0–4.0 scale."""
+    if pd.isna(value):
+        return np.nan
+    return round((value / source_max) * 4.0, 4)
+
+
+# ---------------------------------------------------------------------------
 # Per-dataset transform functions
 # ---------------------------------------------------------------------------
 
@@ -147,6 +160,21 @@ def _transform_uci_student(df: pd.DataFrame) -> pd.DataFrame:
             df[col] = _safe_bool_convert(df[col])
 
     # Sex mapping (already 'M'/'F' in this dataset — no conversion needed)
+
+    # Derive GPA from G3 (final grade, 0–20 Portuguese scale → 0.0–4.0)
+    if "G3" in df.columns:
+        df["gpa"] = df["G3"].apply(lambda x: _normalize_gpa_to_4_scale(x, 20.0))
+        logger.info("[uci_student] Derived gpa from G3 (0-20 -> 0.0-4.0 scale)")
+
+    # Derive parent_edu as max of Medu and Fedu (0-4 ordinal scale)
+    if "Medu" in df.columns and "Fedu" in df.columns:
+        df["parent_edu"] = df[["Medu", "Fedu"]].max(axis=1)
+        logger.info("[uci_student] Derived parent_edu from max(Medu, Fedu)")
+
+    # Map school codes to readable subject names
+    if "school" in df.columns:
+        df["subject"] = df["school"].map({"GP": "Gabriel Pereira", "MS": "Mousinho da Silveira"})
+        logger.info("[uci_student] Mapped school codes to subject names")
 
     # Target engineering: G3 < 10 → High Risk
     if "G3" not in df.columns:
@@ -171,6 +199,18 @@ def _transform_uci_dropout(df: pd.DataFrame) -> pd.DataFrame:
         if col in df.columns:
             df[col] = _safe_bool_convert(df[col])
 
+    # Normalize GPA from 0–20 Portuguese scale to 0.0–4.0
+    if "gpa" in df.columns:
+        df["gpa"] = df["gpa"].apply(lambda x: _normalize_gpa_to_4_scale(x, 20.0))
+        logger.info("[uci_dropout] Normalized gpa from 0-20 -> 0.0-4.0 scale")
+
+    # Derive parent_edu as max of Mother's/Father's qualification
+    mother_col = "Mother's qualification"
+    father_col = "Father's qualification"
+    if mother_col in df.columns and father_col in df.columns:
+        df["parent_edu"] = df[[mother_col, father_col]].max(axis=1)
+        logger.info("[uci_dropout] Derived parent_edu from max(Mother's, Father's qualification)")
+
     # Target engineering: 'Dropout' → 1, else → 0
     if "Target" not in df.columns:
         raise ValueError("UCI Dropout dataset missing 'Target' column")
@@ -193,6 +233,9 @@ def _transform_kaggle(df: pd.DataFrame) -> pd.DataFrame:
     for col in BOOL_COLUMNS:
         if col in df.columns:
             df[col] = _safe_bool_convert(df[col])
+
+    # GPA already on 0.0–4.0 scale — no normalization needed
+    logger.info("[kaggle] GPA already on 0.0-4.0 scale — no normalization needed")
 
     # Target engineering: GradeClass >= 3 (D or F) → High Risk
     if "GradeClass" not in df.columns:
@@ -254,7 +297,7 @@ def transform_data(
         if save_processed:
             out_path = _PROCESSED_DIR / f"{name}_clean.csv"
             df_clean.to_csv(out_path, index=False)
-            logger.info("[%s] Saved processed CSV → %s (%d cols preserved)",
+            logger.info("[%s] Saved processed CSV -> %s (%d cols preserved)",
                         name, out_path, len(df_clean.columns))
 
         transformed[name] = df_clean

@@ -147,7 +147,7 @@ def generate_correlation_heatmap(df: pd.DataFrame, save_path: Path | None = None
     out = save_path or (RESULTS_DIR / "feature_correlation_heatmap.png")
     plt.savefig(out, dpi=150)
     plt.close()
-    logger.info("Saved correlation heatmap → %s", out)
+    logger.info("Saved correlation heatmap -> %s", out)
     return corr
 
 

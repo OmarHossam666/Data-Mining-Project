@@ -32,17 +32,15 @@
 
 \author{
 \IEEEauthorblockN{
-Omar Hossam Fathey\textsuperscript{1},
-Ghada K. El-Monayer\textsuperscript{2},
-Shahd Elsayed Mohamed\textsuperscript{1},
-Abdelrahman Ahmed Yehia\textsuperscript{3},
-Omar M. Elzeki\textsuperscript{1,2}
+Omar Hossam Fathey,
+Ghada K. El-Monayer,
+Shahd Elsayed Mohamed,
+Abdelrahman Ahmed Yehia,
+Omar M. Elzeki
 }
 
 \IEEEauthorblockA{
-\textsuperscript{1}Faculty of Computers and Information, Mansoura University, 35516, Mansoura, Egypt. \\
-\textsuperscript{2}Faculty of Computer Science \& Engineering, New Mansoura University, New Mansoura, 35712, Egypt. \\
-\textsuperscript{3}Misr Higher Institute for Commerce and Computers, Mansoura, 35511, Egypt. \\
+Faculty of Computer Science \& Engineering, New Mansoura University, New Mansoura, 35712, Egypt. \\
 }}
 \maketitle
 
@@ -50,7 +48,7 @@ Omar M. Elzeki\textsuperscript{1,2}
 %  ABSTRACT
 % ===================================================================
 \begin{abstract}
-Early identification of at-risk students remains a persistent challenge in higher education, where interventions are frequently applied after the window for effective remediation has closed. This paper presents \textbf{ProGrade}, an end-to-end early warning framework integrating a Medallion data warehouse architecture with temporal checkpoint modeling and explainable machine learning. Three public educational datasets are unified within a Kimball star-schema pipeline (Bronze, Silver, and Gold layers). A temporal feature-masking protocol progressively reveals features at simulated Weeks~4, 8, and~12, enabling systematic evaluation of the accuracy--lead time tradeoff. To ensure methodological validity, Mutual Information feature selection, SMOTE oversampling ($k$-neighbors${=}5$), and feature scaling are applied exclusively within training folds, preventing data leakage. We benchmark Logistic Regression, Random Forest, and XGBoost across all checkpoints. At Week~12, XGBoost models achieve an F1-Macro of $0.852 \pm 0.005$ and an ROC-AUC of 0.920 on held-out test data (confirmed via five-seed stability analysis). Furthermore, models at Week~8 achieve an F1-Macro over 0.80, offering significant lead time for counselor interventions. SHAP-based feature attribution delivers both global and individualized explanations, providing three-tier transparency that facilitates actionable, per-student intervention recommendations.
+Early identification of at-risk students remains a persistent challenge in higher education, where interventions are frequently applied after the window for effective remediation has closed. This paper presents \textbf{ProGrade}, an end-to-end early warning framework integrating a Medallion data warehouse architecture with temporal checkpoint modeling and explainable machine learning. Three public educational datasets are unified within a Kimball star-schema pipeline (Bronze, Silver, and Gold layers). A temporal feature-masking protocol progressively reveals features at simulated Weeks~4, 8, and~12, enabling systematic evaluation of the accuracy--lead time tradeoff. To ensure methodological validity, Mutual Information feature selection, SMOTE oversampling ($k$-neighbors${=}5$), and feature scaling are applied exclusively within training folds, preventing data leakage. We benchmark Logistic Regression, Random Forest, and XGBoost across all checkpoints. At Week~12, models achieve an F1-Macro of $0.850 \pm 0.005$ and an ROC-AUC of 0.925 on held-out test data (confirmed via five-seed stability analysis). Furthermore, models at Week~8 achieve an F1-Macro over 0.80, offering significant lead time for counselor interventions. SHAP-based feature attribution delivers both global and individualized explanations, providing three-tier transparency that facilitates actionable, per-student intervention recommendations.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -89,7 +87,7 @@ To bridge these gaps, we introduce \textbf{ProGrade}---a production-oriented ana
 \begin{enumerate}[leftmargin=*, label=\textbf{C\arabic*.}]
 \item \textbf{Enterprise Data Warehouse (EDW) with Medallion Architecture:} We utilize a three-tiered Medallion Architecture (Bronze, Silver Star-Schema, Gold Data Mart) to perform educational analytics, establishing a fully reproducible and auditable data foundation.
 \item \textbf{Temporal Checkpoint Protocol:} We construct a feature-masking protocol that emulates progressive information availability at Weeks~4, 8, and~12. This allows for a principled quantification of the accuracy-intervention lead time tradeoff.
-\item \textbf{Leakage-Free ML Pipeline:} Our feature selection and preprocessing are strictly post-split. Specifically, Mutual Information feature selection, SMOTE ($k$-neighbors${=}5$), and StandardScaler are applied exclusively to the training data, ultimately yielding an F1-Macro of $0.852 \pm 0.005$ on the held-out test data.
+\item \textbf{Leakage-Free ML Pipeline:} Our feature selection and preprocessing are strictly post-split. Specifically, Mutual Information feature selection, SMOTE ($k$-neighbors${=}5$), and StandardScaler are applied exclusively to the training data, ultimately yielding an F1-Macro of $0.850 \pm 0.005$ on the held-out test data.
 \item \textbf{Explainable Risk Stratification:} We leverage SHAP TreeExplainer to produce global feature importance summaries alongside student-specific waterfall plots, which are annotated by a three-level risk scale (Low / Medium / High).
 \end{enumerate}
 
@@ -126,7 +124,7 @@ ProGrade comprises four integrated components: (1)~a Medallion data warehouse pi
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\linewidth]{figures/star_schema_ERD.png}
-    \caption{ProGrade Silver layer star-schema. The central \texttt{FactStudentRisk} table links to four dimension tables (\texttt{DimStudent}, \texttt{DimCourse}, \texttt{DimSemester}, \texttt{DimDemographics}) via surrogate keys.}
+    \caption{ProGrade Silver layer star-schema. The central \texttt{FactStudentRisk} table links to three dimension tables (\texttt{DimStudent}, \texttt{DimCourse}, \texttt{DimDemographics}) via surrogate keys.}
     \label{fig:star_schema}
 \end{figure}
 
@@ -149,7 +147,7 @@ The ETL pipeline follows the Medallion Architecture pattern, decomposing data pr
 \begin{itemize}[leftmargin=*]
 \item \textbf{Bronze (Raw Ingestion):} Source datasets are ingested with path-integrity validation via declarative manifests. Raw files are stored without modification to preserve data provenance.
 
-\item \textbf{Silver (Dimensional Model):} Data is cleaned, imputed (median for numeric, mode for categorical), and mapped to a Kimball star-schema \cite{kimball2013dw}. As shown in Fig.~\ref{fig:star_schema}, the central \texttt{FactStudentRisk} table stores numeric measurements (GPA, absences, risk score) and links to four dimension tables via surrogate keys: \texttt{DimStudent} (personal/family attributes), \texttt{DimCourse} (subject/school context), \texttt{DimSemester} (temporal checkpoint), and \texttt{DimDemographics} (socioeconomic indicators). The warehouse is implemented in SQLite using SQLAlchemy ORM with indexed foreign keys.
+\item \textbf{Silver (Dimensional Model):} Data is cleaned, imputed (median for numeric, mode for categorical), and mapped to a Kimball star-schema \cite{kimball2013dw}. As shown in Fig.~\ref{fig:star_schema}, the central \texttt{FactStudentRisk} table stores numeric measurements (GPA, absences, risk score) and links to three dimension tables via surrogate keys: \texttt{DimStudent} (personal/family attributes), \texttt{DimCourse} (subject/school context), and \texttt{DimDemographics} (socioeconomic indicators). The warehouse is implemented in SQLite using SQLAlchemy ORM with indexed foreign keys.
 
 \item \textbf{Gold (Data Mart):} A denormalized analytical view (\texttt{student\_risk\_mart.csv}) joins all dimensions with human-readable mappings (e.g., ``Urban''/``Rural'', GPA brackets, attendance tiers) for direct consumption by BI dashboards and counselor reports.
 \end{itemize}
@@ -245,21 +243,21 @@ Table~\ref{tab:metrics} presents the full evaluation metrics for all three model
 \toprule
 \textbf{Model} & \textbf{Acc.} & \textbf{Prec.} & \textbf{Rec.} & \textbf{F1-M} & \textbf{AUC} & \textbf{$\kappa$} \\
 \midrule
-Logistic Reg. & 0.858 & 0.836 & 0.845 & 0.840 & 0.922 & 0.680 \\
-Random Forest & 0.869 & 0.848 & 0.854 & 0.851 & \textbf{0.925} & 0.702 \\
-XGBoost       & \textbf{0.870} & \textbf{0.851} & \textbf{0.853} & \textbf{0.852} & 0.920 & \textbf{0.704} \\
+Logistic Reg. & 0.861 & 0.839 & 0.848 & 0.843 & 0.922 & 0.687 \\
+Random Forest & \textbf{0.872} & \textbf{0.852} & \textbf{0.857} & \textbf{0.854} & \textbf{0.926} & \textbf{0.709} \\
+XGBoost       & 0.869 & 0.849 & 0.850 & 0.850 & 0.919 & 0.700 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-XGBoost achieves the highest F1-Macro (0.852) and Cohen's $\kappa$ (0.704), indicating substantial agreement beyond chance \cite{cohen1960kappa}. All models substantially outperform the 67.9\% majority-class baseline, with even the linear baseline (LR) exceeding 0.84 F1-Macro, demonstrating that the fully leakage-free pipeline---including post-split feature selection---produces consistently strong results. Notably, Random Forest achieves the highest ROC-AUC (0.925), slightly exceeding XGBoost (0.920); this inversion occurs because ROC-AUC evaluates the full ranking of predicted probabilities whereas F1-Macro evaluates performance at a fixed decision threshold, and XGBoost's sharper probability calibration favors the latter.
+Random Forest achieves the highest F1-Macro (0.854) and Cohen's $\kappa$ (0.709), indicating substantial agreement beyond chance \cite{cohen1960kappa}. All models substantially outperform the 67.9\% majority-class baseline, with even the linear baseline (LR) exceeding 0.84 F1-Macro, demonstrating that the fully leakage-free pipeline---including post-split feature selection---produces consistently strong results. Notably, Random Forest also achieves the highest ROC-AUC (0.926), slightly exceeding Logistic Regression (0.922) and XGBoost (0.919).
 
 Fig.~\ref{fig:roc} displays the ROC curves for the three models at Checkpoint~12, confirming that ensemble methods and the linear baseline achieve comparable discriminative ability on this feature set.
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\linewidth]{figures/roc_curves.png}
-    \caption{ROC curves at Checkpoint~12 (test set). All models achieve AUC $\geq$ 0.920, indicating strong discriminative performance.}
+    \caption{ROC curves at Checkpoint~12 (test set). All models achieve AUC $\geq$ 0.919, indicating strong discriminative performance.}
     \label{fig:roc}
 \end{figure}
 
@@ -268,7 +266,7 @@ Fig.~\ref{fig:confusion} presents the confusion matrices, illustrating the error
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\linewidth]{figures/confusion_matrices.png}
-    \caption{Confusion matrices at Checkpoint~12 (test set). XGBoost achieves the highest F1-Macro (0.852) with balanced precision and recall across both classes.}
+    \caption{Confusion matrices at Checkpoint~12 (test set). Random Forest achieves the highest F1-Macro (0.854) with balanced precision and recall across both classes.}
     \label{fig:confusion}
 \end{figure}
 
@@ -284,9 +282,9 @@ Table~\ref{tab:checkpoint} presents the F1-Macro progression across all three te
 \toprule
 \textbf{Model} & \textbf{Week 4} & \textbf{Week 8} & \textbf{Week 12} \\
 \midrule
-Logistic Regression & 0.735 & 0.806 & 0.840 \\
-Random Forest       & 0.715 & \textbf{0.819} & 0.851 \\
-XGBoost             & 0.702 & 0.813 & \textbf{0.852} \\
+Logistic Regression & \textbf{0.735} & 0.806 & 0.843 \\
+Random Forest       & 0.715 & \textbf{0.819} & \textbf{0.854} \\
+XGBoost             & 0.702 & 0.813 & 0.850 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -363,14 +361,14 @@ To assess the robustness of reported metrics, the full training and evaluation p
 \toprule
 \textbf{Model} & \textbf{Week 4} & \textbf{Week 8} & \textbf{Week 12} \\
 \midrule
-Logistic Reg. & $0.735 \pm 0.000$ & $0.806 \pm 0.000$ & $0.840 \pm 0.000$ \\
-Random Forest & $0.721 \pm 0.008$ & $0.821 \pm 0.002$ & $0.852 \pm 0.002$ \\
-XGBoost       & $0.698 \pm 0.001$ & $0.820 \pm 0.004$ & $0.847 \pm 0.005$ \\
+Logistic Reg. & $0.735 \pm 0.000$ & $0.806 \pm 0.000$ & $0.843 \pm 0.000$ \\
+Random Forest & $0.721 \pm 0.008$ & $0.821 \pm 0.002$ & $0.850 \pm 0.005$ \\
+XGBoost       & $0.698 \pm 0.001$ & $0.820 \pm 0.004$ & $0.850 \pm 0.004$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-All models exhibit low variance across seeds ($\sigma \leq 0.008$), confirming the stability of reported results. Logistic Regression, being deterministic given fixed data splits, shows zero variance. The 5-fold cross-validation F1-Macro on training data further corroborates test-set performance: XGBoost achieves $0.886 \pm 0.008$, Random Forest $0.882 \pm 0.008$, and Logistic Regression $0.860 \pm 0.008$ at Week~12.
+All models exhibit low variance across seeds ($\sigma \leq 0.008$), confirming the stability of reported results. Logistic Regression, being deterministic given fixed data splits, shows zero variance. The 5-fold cross-validation F1-Macro on training data further corroborates test-set performance: XGBoost achieves $0.885 \pm 0.006$, Random Forest $0.880 \pm 0.009$, and Logistic Regression $0.860 \pm 0.009$ at Week~12.
 
 Table~\ref{tab:compute} summarizes computational costs. All experiments are conducted on a consumer-grade workstation (Intel Core i7, 16\,GB RAM, no GPU acceleration).
 
@@ -383,8 +381,8 @@ Table~\ref{tab:compute} summarizes computational costs. All experiments are cond
 \textbf{Model} & \textbf{Train (s)} & \textbf{Inference (s)} \\
 \midrule
 Logistic Regression & 0.02 & $< 0.01$ \\
-Random Forest & 0.87 & $< 0.01$ \\
-XGBoost & 0.54 & $< 0.01$ \\
+Random Forest & 0.75 & $< 0.01$ \\
+XGBoost & 0.43 & $< 0.01$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -420,7 +418,7 @@ Realinho et al.\ \cite{realinho2022} & Accuracy & 0.79 & No & No \\
 Martins et al.\ \cite{martins2023phased} & F1-Macro & 0.83 & Yes & No \\
 Ahmad et al.\ \cite{icdsns2024ensemble} & Accuracy & 0.88 & No & No \\
 Alwadi et al.\ \cite{nature2025xai} & Accuracy & 0.85 & No & Yes \\
-\textbf{ProGrade (ours)} & \textbf{F1-Macro} & $\mathbf{0.852 \pm 0.005}$ & \textbf{Yes} & \textbf{Yes} \\
+\textbf{ProGrade (ours)} & \textbf{F1-Macro} & $\mathbf{0.850 \pm 0.005}$ & \textbf{Yes} & \textbf{Yes} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -452,7 +450,7 @@ Several limitations warrant discussion:
 
 This paper presented ProGrade, an end-to-end early warning framework that addresses four persistent gaps in educational data mining: the absence of reproducible data architectures, data leakage in preprocessing, temporal mismatch between prediction and intervention, and insufficient model transparency. By integrating a Medallion data warehouse (Bronze $\rightarrow$ Silver Star-Schema $\rightarrow$ Gold Data Mart) with fully leakage-free preprocessing (including post-split feature selection), temporal checkpoint modeling, and SHAP-based explainability, ProGrade provides a principled foundation for institutional deployment.
 
-Our experimental evaluation on the UCI Dropout dataset ($n = 4{,}424$) demonstrates that XGBoost achieves an F1-Macro of $0.852 \pm 0.005$ and ROC-AUC of 0.920 at Week~12 (five-seed stability analysis), with Week~8 models attaining F1-Macro $\geq 0.80$ while preserving eight weeks of intervention lead time. All models exhibit low variance across seeds ($\sigma \leq 0.008$), confirming result robustness, and sub-second training times confirm deployability on consumer-grade hardware. SHAP TreeExplainer generates transparent, per-student explanations that enable academic counselors to identify specific risk drivers and design targeted intervention strategies.
+Our experimental evaluation on the UCI Dropout dataset ($n = 4{,}424$) demonstrates that our best model achieves an F1-Macro of $0.850 \pm 0.005$ and ROC-AUC of 0.925 at Week~12 (five-seed stability analysis, where XGBoost achieves $0.850 \pm 0.004$ and Random Forest $0.850 \pm 0.005$), with Week~8 models attaining F1-Macro $\geq 0.80$ while preserving eight weeks of intervention lead time. All models exhibit low variance across seeds ($\sigma \leq 0.008$), confirming result robustness, and sub-second training times confirm deployability on consumer-grade hardware. SHAP TreeExplainer generates transparent, per-student explanations that enable academic counselors to identify specific risk drivers and design targeted intervention strategies.
 
 Future work will focus on real-time LMS integration, multi-class outcome prediction, cross-institutional transfer learning, and formal fairness auditing using equalized odds and demographic parity metrics, to advance ProGrade toward production deployment in diverse educational settings.
 

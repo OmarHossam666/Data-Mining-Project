@@ -65,7 +65,7 @@ def plot_summary_bar(shap_values: shap.Explanation, save_path: Path) -> None:
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close()
-    logger.info("Saved SHAP bar plot → %s", save_path)
+    logger.info("Saved SHAP bar plot -> %s", save_path)
 
 
 def plot_beeswarm(shap_values: shap.Explanation, save_path: Path) -> None:
@@ -76,7 +76,7 @@ def plot_beeswarm(shap_values: shap.Explanation, save_path: Path) -> None:
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close()
-    logger.info("Saved SHAP beeswarm → %s", save_path)
+    logger.info("Saved SHAP beeswarm -> %s", save_path)
 
 
 def plot_waterfall(
@@ -92,7 +92,7 @@ def plot_waterfall(
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close()
-    logger.info("Saved waterfall (%s) → %s", title, save_path)
+    logger.info("Saved waterfall (%s) -> %s", title, save_path)
 
 
 def generate_waterfall_gallery(

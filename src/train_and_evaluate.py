@@ -25,6 +25,8 @@ import warnings
 from pathlib import Path
 
 import joblib
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -155,7 +157,7 @@ def plot_confusion_matrices(
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close()
-    logger.info("Saved confusion matrices → %s", save_path)
+    logger.info("Saved confusion matrices -> %s", save_path)
 
 
 def plot_roc_curves(results: list[dict], save_path: Path) -> None:
@@ -177,7 +179,7 @@ def plot_roc_curves(results: list[dict], save_path: Path) -> None:
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close()
-    logger.info("Saved ROC curves → %s", save_path)
+    logger.info("Saved ROC curves -> %s", save_path)
 
 
 def plot_checkpoint_comparison(comparison_df: pd.DataFrame, save_path: Path) -> None:
@@ -207,7 +209,7 @@ def plot_checkpoint_comparison(comparison_df: pd.DataFrame, save_path: Path) -> 
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close()
-    logger.info("Saved checkpoint comparison → %s", save_path)
+    logger.info("Saved checkpoint comparison -> %s", save_path)
 
 
 # ---------------------------------------------------------------------------
@@ -388,7 +390,7 @@ def run_training_and_evaluation() -> None:
                     "XGBoost": "xgb_model.joblib",
                 }[model_name]
                 joblib.dump(model, config.MODELS_DIR / model_filename)
-                logger.info("Saved model → %s", model_filename)
+                logger.info("Saved model -> %s", model_filename)
 
                 best_checkpoint_results.append({
                     "model_name": model_name,

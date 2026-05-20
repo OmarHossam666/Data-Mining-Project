@@ -84,7 +84,8 @@ col1, col2, col3 = st.columns(3)
 high_risk_count = len(filtered_df[filtered_df['risk_status'] == 'High Risk'])
 col1.metric("Total Students Analyzed", len(filtered_df))
 col2.metric("High Risk Students", high_risk_count, delta_color="inverse")
-col3.metric("Avg Absences", f"{filtered_df['absences'].mean():.1f}")
+avg_abs = filtered_df['absences'].mean()
+col3.metric("Avg Absences", f"{avg_abs:.1f}" if not pd.isna(avg_abs) else "N/A")
 
 st.divider()
 

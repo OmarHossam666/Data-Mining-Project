@@ -8,7 +8,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler(log_path),
+        logging.FileHandler(log_path, mode="w"),
         logging.StreamHandler(sys.stdout)
     ]
 )
@@ -18,18 +18,24 @@ logger = logging.getLogger(__name__)
 from etl.extract import extract_data
 from etl.transform import transform_data
 from etl.load import load_data
+from etl.gold_layer import generate_gold_layer
 
 def run_pipeline():
     logger.info("=== Starting ProGrade ETL Pipeline ===")
     try:
-        # Extract
+        # Phase 1: Extract (Bronze Layer)
         raw_data = extract_data()
         
-        # Transform
+        # Phase 3: Transform
         clean_data = transform_data(raw_data)
         
-        # Load
+        # Phase 4: Load (Silver Layer — Star Schema)
         load_data(clean_data)
+        
+        # Phase 9: Gold Layer Generation
+        logger.info("--- Generating Gold Layer Data Mart ---")
+        gold_df = generate_gold_layer()
+        logger.info("Gold Layer generated: %d rows × %d cols", *gold_df.shape)
         
         logger.info("=== ETL Pipeline Completed Successfully ===")
     except Exception as e:

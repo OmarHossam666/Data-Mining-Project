@@ -14,6 +14,8 @@ Key design decisions:
   - ``study_time``, ``failures_history``, ``extracurricular`` stored in
     :class:`StudentRiskFact` (per-enrollment measurements, not course
     attributes).
+  - **DimSemester removed** — no source dataset provides year/period/
+    checkpoint data.
 """
 
 from __future__ import annotations
@@ -32,20 +34,21 @@ _SRC_DIR = Path(__file__).resolve().parent.parent
 import sys
 sys.path.insert(0, str(_SRC_DIR))
 
-from models import Base, DimCourse, DimDemographics, DimSemester, DimStudent, StudentRiskFact
+from models import Base, DimCourse, DimDemographics, DimStudent, StudentRiskFact
 import config
 
 logger = logging.getLogger(__name__)
 
 BATCH_SIZE: int = config.BATCH_SIZE
 
-# Columns we expect in the final concatenated DataFrame
+# Columns we expect in the final concatenated DataFrame.
+# Columns that don't exist in a given dataset will be padded with None.
 _SCHEMA_COLS: list[str] = [
     "age", "sex", "address", "family_size", "parent_edu",
     "internet_access", "paid_classes",
-    "subject", "study_time", "failures_history", "extracurricular",
-    "year", "period", "nationality", "socioeconomic_tier",
-    "first_gen_student", "scholarship_flag",
+    "subject",
+    "study_time", "failures_history", "extracurricular",
+    "nationality", "scholarship_flag",
     "gpa", "absences", "risk_score", "risk_label",
 ]
 
@@ -129,38 +132,43 @@ def load_data(
             for row in batch:
                 r = {k: _normalize_value(v) for k, v in row.items()}
 
+                # Convert boolean-like values for SQLAlchemy Boolean columns
+                def _to_bool(val):
+                    """Safely convert a value to Python bool or None."""
+                    if val is None:
+                        return None
+                    if isinstance(val, bool):
+                        return val
+                    if isinstance(val, (int, float)):
+                        return bool(int(val))
+                    if isinstance(val, str):
+                        return val.lower() in ("true", "1", "yes")
+                    return None
+
                 student = DimStudent(
                     age=r.get("age"),
                     sex=r.get("sex"),
                     address=r.get("address"),
                     family_size=r.get("family_size"),
                     parent_edu=r.get("parent_edu"),
-                    internet_access=r.get("internet_access"),
-                    paid_classes=r.get("paid_classes"),
+                    internet_access=_to_bool(r.get("internet_access")),
+                    paid_classes=_to_bool(r.get("paid_classes")),
                 )
                 course = DimCourse(
                     subject=r.get("subject"),
                     school=r.get("school"),
                 )
-                semester = DimSemester(
-                    year=r.get("year"),
-                    period=r.get("period"),
-                    checkpoint_week=None,  # Set by feature engineering, not here
-                )
                 demo = DimDemographics(
                     nationality=r.get("nationality"),
-                    socioeconomic_tier=r.get("socioeconomic_tier"),
-                    first_gen_student=r.get("first_gen_student"),
-                    scholarship_flag=r.get("scholarship_flag"),
+                    scholarship_flag=_to_bool(r.get("scholarship_flag")),
                 )
 
-                session.add_all([student, course, semester, demo])
+                session.add_all([student, course, demo])
                 session.flush()
 
                 fact = StudentRiskFact(
                     student_id=student.student_id,
                     course_id=course.course_id,
-                    semester_id=semester.semester_id,
                     demo_id=demo.demo_id,
                     gpa=r.get("gpa"),
                     absences=r.get("absences"),
@@ -168,7 +176,7 @@ def load_data(
                     risk_label=r.get("risk_label"),
                     study_time=r.get("study_time"),
                     failures_history=r.get("failures_history"),
-                    extracurricular=r.get("extracurricular"),
+                    extracurricular=_to_bool(r.get("extracurricular")),
                 )
                 session.add(fact)
                 inserted += 1
